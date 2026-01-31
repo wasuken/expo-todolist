@@ -104,6 +104,12 @@ export default function TasksScreen() {
     setEditingDueDate(undefined); // Clear editing state
   };
 
+  const cancelEditing = () => {
+    setEditingTodoId(null);
+    setEditingText('');
+    setEditingDueDate(undefined);
+  };
+
   const renderTodo = ({ item }: { item: Todo }) => {
     const isEditing = editingTodoId === item.id;
 
@@ -116,7 +122,6 @@ export default function TasksScreen() {
                 style={styles.editInput}
                 value={editingText}
                 onChangeText={setEditingText}
-                onBlur={handleUpdate}
                 autoFocus
                 returnKeyType="done"
                 onSubmitEditing={handleUpdate}
@@ -155,7 +160,16 @@ export default function TasksScreen() {
               />
             </View>
           )}
-          right={() => <IconButton icon="delete" onPress={() => deleteTodo(item.id)} size={20} />}
+          right={() =>
+            isEditing ? (
+              <View style={{ flexDirection: 'row' }}>
+                <IconButton icon="check" onPress={handleUpdate} size={20} />
+                <IconButton icon="close" onPress={cancelEditing} size={20} />
+              </View>
+            ) : (
+              <IconButton icon="delete" onPress={() => deleteTodo(item.id)} size={20} />
+            )
+          }
           style={styles.listItem}
         />
         {/* DateTimePicker for editing existing todo */}
