@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Provider as PaperProvider, DefaultTheme } from 'react-native-paper';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+// import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { TodoProvider } from './contexts/TodoContext';
 import TasksScreen from './screens/TasksScreen';

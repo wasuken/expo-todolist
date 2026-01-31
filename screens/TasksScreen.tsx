@@ -137,21 +137,28 @@ export default function TasksScreen() {
               </Text>
             )
           }
-          description={() =>
-            item.dueDate ? (
-              <DueDateChip
-                date={new Date(item.dueDate)}
-                onPress={isEditing ? showEditingDatePicker : undefined}
-                editable={isEditing}
-              />
-            ) : isEditing ? (
-              <Button icon="calendar" onPress={showEditingDatePicker} compact mode="text">
-                期限を設定
-              </Button>
-            ) : null
-          }
+          description={() => {
+            // In both view and edit mode, show the due date if it exists.
+            // In edit mode, additionally show the "Set Due Date" button if it doesn't exist.
+            if (item.dueDate) {
+              return (
+                <DueDateChip
+                  date={new Date(item.dueDate)}
+                  onPress={isEditing ? showEditingDatePicker : undefined}
+                  editable={isEditing}
+                />
+              );
+            }
+            if (isEditing) {
+              return (
+                <Button icon="calendar" onPress={showEditingDatePicker} compact mode="text">
+                  期限を設定
+                </Button>
+              );
+            }
+            return null;
+          }}
           descriptionStyle={styles.description}
-          onPress={() => !isEditing && startEditing(item)}
           left={() => (
             <View style={styles.checkboxContainer}>
               <Checkbox
@@ -163,22 +170,17 @@ export default function TasksScreen() {
           right={() =>
             isEditing ? (
               <View style={{ flexDirection: 'row' }}>
-                <IconButton icon="check" onPress={handleUpdate} size={20} />
-                <IconButton icon="close" onPress={cancelEditing} size={20} />
+                <IconButton icon="check" onPress={handleUpdate} size={20} accessibilityLabel="save-todo" />
+                <IconButton icon="close" onPress={cancelEditing} size={20} accessibilityLabel="cancel-editing" />
               </View>
             ) : (
-              <IconButton icon="delete" onPress={() => deleteTodo(item.id)} size={20} />
+              <View style={{ flexDirection: 'row' }}>
+                <IconButton icon="pencil" onPress={() => startEditing(item)} size={20} accessibilityLabel="edit-todo" />
+                <IconButton icon="delete" onPress={() => deleteTodo(item.id)} size={20} accessibilityLabel="delete-todo" />
+              </View>
             )
           }
           style={styles.listItem}
-        />
-        {/* DateTimePicker for editing existing todo */}
-        <DateTimePickerModal
-          isVisible={isEditingDatePickerVisible && isEditing && editingTodoId === item.id}
-          mode="datetime"
-          onConfirm={handleConfirmEditingTodoDate}
-          onCancel={hideEditingDatePicker}
-          date={editingDueDate || new Date()} // Default to current or existing due date
         />
       </Card>
     );
@@ -201,6 +203,7 @@ export default function TasksScreen() {
             onChangeText={setNewTodoText}
             style={styles.input}
             mode="outlined"
+            testID="new-todo-input"
           />
           <View style={styles.inputActions}>
             <Button icon="calendar" onPress={showDatePicker}>
@@ -218,6 +221,16 @@ export default function TasksScreen() {
           onConfirm={handleConfirmNewTodoDate}
           onCancel={hideDatePicker}
           date={newTodoDueDate || new Date()}
+        />
+        
+        {/* DateTimePicker for editing existing todo - MOVED HERE */}
+        <DateTimePickerModal
+          isVisible={isEditingDatePickerVisible}
+          mode="datetime"
+  
+          onConfirm={handleConfirmEditingTodoDate}
+          onCancel={hideEditingDatePicker}
+          date={editingDueDate || new Date()} // Default to current or existing due date
         />
 
         <FlatList

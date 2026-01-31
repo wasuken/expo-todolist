@@ -95,7 +95,7 @@ export default function HistoryScreen() {
         <View style={styles.listContainer}>
           <List.Subheader>
             {new Date(selectedDate).toLocaleDateString()} に完了したタスク
-          </List.Subheader>{' '}
+          </List.Subheader>
           {tasksForSelectedDate.length > 0 ? (
             tasksForSelectedDate.map(item => (
               <List.Item
