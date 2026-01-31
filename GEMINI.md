@@ -96,7 +96,7 @@ interface Todo {
 - Set up bottom tab navigation with icons
 ### Implemented Feature: Tab Bar Icons for Navigation
 
-- **概要**: `App.tsx`のフッタータブにアイコンが表示されるように修正しました。`Tab.Navigator`の`screenOptions`内にある`tabBarIcon`プロパティで、`route.name`の比較文字列を日本語のタブ名（「タスク」「プリセット」「履歴」）に一致させるように変更しました。これにより、各タブに適切な`MaterialCommunityIcons`が表示されるようになりました。
+- **概要**: `App.tsx`のフッタータブにアイコンが表示されるように修正しました。`Tab.Navigator`の`screenOptions`内にある`tabBarIcon`プロパティで、`route.name`の比較文字列を日本語のタブ名に一致させるように変更しました。また、`iconName`の型をより厳密にし、どのタブにも一致しない場合のデフォルトアイコンを設定することで、コードの安全性とUXを向上させました。
 - **使用したライブラリとバージョン**:
     - `@react-navigation/bottom-tabs`: `^7.10.1`
     - `react-native-paper`: `^5.14.5`
