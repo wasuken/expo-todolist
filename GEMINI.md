@@ -195,3 +195,22 @@ interface CompletionHistory {
 - Show dots on dates with completions
 - Different color dot for today
 - Highlight selected date
+
+### Implemented Feature: History & Calendar View
+
+- **概要**: HistoryScreen に react-native-calendars を使用してカレンダー表示を実装しました。完了したタスクの日付にマーカーを表示し、選択した日付の完了タスク一覧を下部に表示する上下分割レイアウトを実装しました。TodoContext に completedAt フィールドを追加し、タスク完了時に日時を保存するようにしました。
+
+- **使用したライブラリとバージョン**:
+    - `react-native-calendars`: `^1.1306.0`
+    - `@react-native-async-storage/async-storage`: (既存)
+    - `react-native-paper`: `^5.14.5`
+
+- **ハマったポイントと解決策**:
+    - **ハマったポイント1**: MarkedDates の型定義が TypeScript で必要だった。`{ [key: string]: { marked?: boolean; dotColor?: string; selected?: boolean; selectedColor?: string; } }` という型を明示的に定義する必要がありました。
+    - **ハマったポイント2**: List.Subheader の配置位置。当初リストの最後に配置していたが、表示が不自然だったため、リストの最初（tasksForSelectedDate.map の前）に移動しました。
+    - **ハマったポイント3**: description プロパティの記法。`description=\`...\`` ではなく `description={\`...\`}` と {} で囲む必要がありました。
+
+- **次回への引き継ぎ事項**:
+    - カレンダーのテーマカラーは theme.colors.primary に統一済み
+    - 日付フォーマットは YYYY-MM-DD 形式（toISOString().split('T')[0]）を使用
+    - 完了タスクは completedAt フィールドで管理、未完了タスクには completedAt がない
