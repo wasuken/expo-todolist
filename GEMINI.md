@@ -1,65 +1,65 @@
-# Gemini AI Coding Rules
+# Gemini AI コーディングルール
 
-## General Principles
-- Always provide complete, working code
-- Include all necessary imports
-- Add TypeScript types for all functions and components
-- Include error handling
-- Write clean, readable code with proper comments
+## 一般原則
+- 常に完全で動作するコードを提供する
+- 必要なインポートはすべて含める
+- すべての関数とコンポーネントにTypeScript型を追加する
+- エラーハンドリングを含める
+- クリーンで読みやすいコードと適切なコメントを書く
 
-## Expo/React Native Specific
-- Use Expo SDK compatible packages only
-- Prefer `npx expo install` over `npm install` for expo packages
-- Use functional components with hooks (no class components)
-- Follow React Native best practices
+## Expo/React Native 特有の原則
+- Expo SDK互換のパッケージのみを使用する
+- Expoパッケージには`npm install`ではなく`npx expo install`を推奨する
+- フックを使用した関数コンポーネントを使用する（クラスコンポーネントは使用しない）
+- React Nativeのベストプラクティスに従う
 
-## Code Style
-- Use TypeScript strict mode
-- Prefer `const` over `let`
-- Use async/await over promises chains
-- Add proper TypeScript interfaces for all data structures
+## コードスタイル
+- TypeScriptのstrictモードを使用する
+- `let`よりも`const`を推奨する
+- プロミスチェーンよりもasync/awaitを使用する
+- すべてのデータ構造に適切なTypeScriptインターフェースを追加する
 
-## Output Format
-When generating code, always include:
-1. Complete file content (not snippets)
-2. Installation commands for all dependencies
-3. File path/name where code should be placed
-4. Brief explanation of implementation
+## 出力フォーマット
+コードを生成する際は、常に以下を含める：
+1. 完全なファイルの内容（スニペットではない）
+2. すべての依存関係のインストールコマンド
+3. コードを配置すべきファイルパス/名前
+4. 実装に関する簡単な説明
 
-## Dependencies
-- Always specify exact package names
-- Mention if package requires native code (avoid if possible for Expo)
-- Prefer Expo-compatible packages
+## 依存関係
+- 常に正確なパッケージ名を指定する
+- パッケージがネイティブコードを必要とする場合は言及する（Expoの場合は可能な限り避ける）
+- Expo互換パッケージを推奨する
 
-## Testing
-- Code should be testable and runnable immediately
-- Include sample data or mock data if needed
-- No placeholder code like "// Add your logic here"
+## テスト
+- コードはすぐにテスト可能で実行可能であること
+- 必要に応じてサンプルデータやモックデータを含める
+- 「// ここにロジックを追加」のようなプレースホルダーコードは含めない
 
-## When Errors Occur
-- Provide complete error messages
-- Suggest specific fixes with code examples
-- Explain why the error happened
+## エラー発生時
+- 完全なエラーメッセージを提供する
+- コード例付きで具体的な修正案を提案する
+- エラーが発生した理由を説明する
 
-## URL and Citations
-- Always include official documentation URLs
-- Cite sources for best practices or patterns used
-- If a URL is inaccessible, explicitly state "URL could not be accessed"
+## URLと引用
+- 常に公式ドキュメントのURLを含める
+- 使用したベストプラクティスやパターンの情報源を引用する
+- URLにアクセスできない場合は、明示的に「URLにアクセスできませんでした」と記載する
 
-# Todo App Specific Rules
+# Todoアプリ固有のルール
 
-## Tech Stack (Fixed)
-- Expo with TypeScript
-- React Native Paper for UI
-- AsyncStorage for persistence
-- No additional state management libraries (use useState/useReducer)
+## 技術スタック (固定)
+- ExpoとTypeScript
+- UIにはReact Native Paper
+- 永続化にはAsyncStorage
+- 追加のステート管理ライブラリは使用しない（useState/useReducerを使用）
 
-## Code Structure
-- Single App.tsx for minimal version
-- Separate components only when requested
-- Keep it simple and readable
+## コード構造
+- 最小バージョンでは単一のApp.tsx
+- リクエストがあった場合にのみコンポーネントを分離する
+- シンプルで読みやすく保つ
 
-## Data Model
+## データモデル
 ```typescript
 interface Todo {
   id: string;
@@ -69,32 +69,31 @@ interface Todo {
 }
 ```
 
-## UI/UX Guidelines
-- Material Design via React Native Paper
-- Minimal and clean interface
-- Inline editing for todos
-- Clear visual feedback for actions
+## UI/UX ガイドライン
+- React Native Paperによるマテリアルデザイン
+- 最小限でクリーンなインターフェース
+- TODOのインライン編集
+- アクションに対する明確な視覚的フィードバック
 
+# フェーズ1: ナビゲーションとUIの改善
 
-# Phase 1: Navigation & UI Improvements
+## スクリーン構造
+- React Navigation Bottom Tabsを使用
+- 3つのタブ:
+  1. "Tasks"（タスク） - メインのTODOリスト
+  2. "Presets"（プリセット） - プリセット管理（現時点ではプレースホルダー）
+  3. "History"（履歴） - カレンダービュー（現時点ではプレースホルダー）
 
-## Screen Structure
-- Use React Navigation Bottom Tabs
-- 3 tabs:
-  1. "Tasks" - Main todo list
-  2. "Presets" - Preset management (placeholder for now)
-  3. "History" - Calendar view (placeholder for now)
+## UI改善
+- チェックボックスを小さくし、TODOテキストに近づける
+- React Native PaperのCheckboxコンポーネントを使用する
+- コンパクトなリストアイテムデザイン
 
-## UI Improvements
-- Make checkboxes smaller and closer to todo text
-- Use React Native Paper's Checkbox component
-- Compact list item design
-
-## Implementation
-- Move current todo logic to Tasks screen
-- Create placeholder screens for Presets and History
-- Set up bottom tab navigation with icons
-### Implemented Feature: Tab Bar Icons for Navigation
+## 実装
+- 現在のTODOロジックをタスク画面に移動する
+- プリセットと履歴のプレースホルダー画面を作成する
+- アイコン付きのボトムタブナビゲーションを設定する
+### 実装済み機能: タブバーのアイコンナビゲーション
 
 - **概要**: `App.tsx`のフッタータブにアイコンが表示されるように修正しました。`Tab.Navigator`の`screenOptions`内にある`tabBarIcon`プロパティで、`route.name`の比較文字列を日本語のタブ名に一致させるように変更しました。また、`iconName`の型をより厳密にし、どのタブにも一致しない場合のデフォルトアイコンを設定することで、コードの安全性とUXを向上させました。
 - **使用したライブラリとバージョン**:
@@ -107,14 +106,14 @@ interface Todo {
 - **次回への引き継ぎ事項**:
     - `tabBarIcon`でデフォルトのアイコンとして`'help-circle-outline'`を設定しましたが、もし該当するルート名がない場合にどのように表示するか、より具体的なUI/UXの検討が必要かもしれません。
 
-## Expo Specific Rules
-- Use `@expo/vector-icons` instead of `react-native-vector-icons`
-- Import example: `import { MaterialCommunityIcons } from '@expo/vector-icons';`
-- Never use packages that require native linking (use Expo SDK equivalents)
+## Expo固有のルール
+- `react-native-vector-icons`ではなく`@expo/vector-icons`を使用する
+- インポート例: `import { MaterialCommunityIcons } from '@expo/vector-icons';`
+- ネイティブリンクを必要とするパッケージは絶対に使用しない（Expo SDKの同等品を使用する）
 
-# Phase 2: Preset Management
+# フェーズ2: プリセット管理
 
-## Data Structure
+## データ構造
 ```typescript
 interface Preset {
   id: string;
@@ -124,33 +123,32 @@ interface Preset {
 }
 ```
 
-## Features
-- Create new preset with name and task list
-- Edit existing preset
-- Delete preset
-- Load preset: Add all tasks from preset to main todo list
-- Persist presets in AsyncStorage
+## 機能
+- 名前とタスクリストで新しいプリセットを作成する
+- 既存のプリセットを編集する
+- プリセットを削除する
+- プリセットを読み込む: プリセットのすべてのタスクをメインのTODOリストに追加する
+- AsyncStorageにプリセットを永続化する
 
-## UI Requirements (PresetsScreen)
-- List of saved presets (use React Native Paper List)
-- FAB (Floating Action Button) to create new preset
-- Dialog/Modal for creating/editing preset
-- Each preset item shows:
-  - Preset name
-  - Number of tasks
-  - Load button (adds tasks to main list)
-  - Edit/Delete icons
+## UI要件 (PresetsScreen)
+- 保存されたプリセットのリスト（React Native PaperのListを使用）
+- 新しいプリセットを作成するためのFAB（フローティングアクションボタン）
+- プリセット作成/編集のためのダイアログ/モーダル
+- 各プリセットアイテムに以下を表示:
+  - プリセット名
+  - タスク数
+  - 読み込みボタン（メインリストにタスクを追加）
+  - 編集/削除アイコン
 
-## Implementation Notes
-- Store presets separately in AsyncStorage key 'presets'
-- When loading preset, create new todos with current timestamp
-- Use TextInput for preset name
-- Use multi-line TextInput or array of inputs for task list
+## 実装ノート
+- プリセットはAsyncStorageキー「presets」に個別に保存する
+- プリセットを読み込む際は、現在のタイムスタンプで新しいTODOを作成する
+- プリセット名にはTextInputを使用する
+- タスクリストには複数行のTextInputまたは入力配列を使用する
 
+# フェーズ3: 履歴とカレンダービュー
 
-# Phase 3: History & Calendar View
-
-## Data Structure
+## データ構造
 ```typescript
 interface Todo {
   id: string;
@@ -165,38 +163,38 @@ interface CompletionHistory {
 }
 ```
 
-## Features
-- Save completion date when todo is marked as completed
-- Display calendar with markers on dates that have completed tasks
-- Show completed tasks for selected date below calendar
-- Default selected date: today
+## 機能
+- TODOが完了とマークされたときに完了日を保存する
+- 完了したタスクがある日付にマーカーを付けたカレンダーを表示する
+- 選択した日付の完了したタスクをカレンダーの下に表示する
+- デフォルトの選択日付: 今日
 
-## UI Layout (Top-Bottom Split)
+## UIレイアウト (上下分割)
 ```
 ┌─────────────────────┐
-│  Calendar (40%)     │ ← Month view with completion markers
-│  Marked dates       │
+│  カレンダー (40%)   │ ← 完了マーカー付きの月間表示
+│  マークされた日付   │
 ├─────────────────────┤
-│  Selected: 01/31    │ ← Header showing selected date
-│  ✓ Task 1          │ ← List of completed tasks
-│  ✓ Task 2          │   for that date
-│  ✓ Task 3          │
+│  選択済み: 01/31    │ ← 選択された日付を示すヘッダー
+│  ✓ タスク1          │ ← その日付の完了したタスクのリスト
+│  ✓ タスク2          │
+│  ✓ タスク3          │
 └─────────────────────┘
 ```
 
-## Implementation Requirements
-- Use react-native-calendars library
-- Mark dates with completed tasks using dots/markers
-- On date selection, filter and display that day's completed tasks
-- Store completion history in AsyncStorage
-- Update TodoContext to save completedAt timestamp
+## 実装要件
+- react-native-calendarsライブラリを使用する
+- 完了したタスクがある日付にドット/マーカーを付ける
+- 日付選択時に、その日の完了したタスクをフィルタリングして表示する
+- AsyncStorageに完了履歴を保存する
+- TodoContextを更新してcompletedAtタイムスタンプを保存する
 
-## Calendar Config
-- Show dots on dates with completions
-- Different color dot for today
-- Highlight selected date
+## カレンダー設定
+- 完了した日付にドットを表示する
+- 今日の日付には異なる色のドットを表示する
+- 選択した日付をハイライトする
 
-### Implemented Feature: History & Calendar View
+### 実装済み機能: 履歴とカレンダービュー
 
 - **概要**: HistoryScreen に react-native-calendars を使用してカレンダー表示を実装しました。完了したタスクの日付にマーカーを表示し、選択した日付の完了タスク一覧を下部に表示する上下分割レイアウトを実装しました。TodoContext に completedAt フィールドを追加し、タスク完了時に日時を保存するようにしました。
 
@@ -208,7 +206,7 @@ interface CompletionHistory {
 - **ハマったポイントと解決策**:
     - **ハマったポイント1**: MarkedDates の型定義が TypeScript で必要だった。`{ [key: string]: { marked?: boolean; dotColor?: string; selected?: boolean; selectedColor?: string; } }` という型を明示的に定義する必要がありました。
     - **ハマったポイント2**: List.Subheader の配置位置。当初リストの最後に配置していたが、表示が不自然だったため、リストの最初（tasksForSelectedDate.map の前）に移動しました。
-    - **ハマったポイント3**: description プロパティの記法。`description=\`...\`` ではなく `description={\`...\`}` と {} で囲む必要がありました。
+    - **ハマったポイント3**: description プロパティの記法。`description=\"...\"` ではなく `description={\"...\"}` と {} で囲む必要がありました。
 
 - **次回への引き継ぎ事項**:
     - カレンダーのテーマカラーは theme.colors.primary に統一済み
