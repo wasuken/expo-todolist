@@ -102,6 +102,7 @@ export default function TasksScreen() {
     setEditingTodoId(null);
     setEditingText('');
     setEditingDueDate(undefined); // Clear editing state
+    
   };
 
   const cancelEditing = () => {

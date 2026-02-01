@@ -28,6 +28,18 @@ const STORAGE_KEY = '@todos';
 
 let todoCounter = 0;
 
+// Todoアイテムをソートする関数
+const sortTodos = (todos: Todo[]): Todo[] => {
+  return [...todos].sort((a, b) => {
+    // 1. completed: false (未完了) を completed: true (完了) より前に
+    if (a.completed && !b.completed) return 1; // aが完了、bが未完了 => aはbより後
+    if (!a.completed && b.completed) return -1; // aが未完了、bが完了 => aはbより前
+
+    // 2. 同じ完了ステータスの場合は、createdAtの降順 (新しいものが上)
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
+};
+
 export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [todos, setTodos] = useState<Todo[]>([]);
 
@@ -54,7 +66,7 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return todo.completed || !todo.dueDate || new Date(todo.dueDate) >= now;
       });
 
-      setTodos(finalTodos);
+      setTodos(sortTodos(finalTodos)); // ここでソートを適用
     };
 
     loadAndCleanTodos();
@@ -76,10 +88,12 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const removeExpiredTasks = () => {
       const now = new Date();
       setTodos(prevTodos =>
-        prevTodos.filter(todo => {
-          // Keep the task if it's completed, has no due date, or the due date is in the future
-          return todo.completed || !todo.dueDate || new Date(todo.dueDate) >= now;
-        })
+        sortTodos( // ここでソートを適用
+          prevTodos.filter(todo => {
+            // Keep the task if it's completed, has no due date, or the due date is in the future
+            return todo.completed || !todo.dueDate || new Date(todo.dueDate) >= now;
+          })
+        )
       );
     };
 
@@ -104,12 +118,12 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       createdAt: new Date(),
       dueDate,
     };
-    setTodos(prevTodos => [newTodo, ...prevTodos]);
+    setTodos(prevTodos => sortTodos([newTodo, ...prevTodos])); // ここでソートを適用
   };
 
   const toggleTodo = (id: string) => {
-    setTodos(
-      todos.map(todo => {
+    setTodos(prevTodos => {
+      const updatedTodos = prevTodos.map(todo => {
         if (todo.id === id) {
           const isCompleted = !todo.completed;
           return {
@@ -119,17 +133,18 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           };
         }
         return todo;
-      })
-    );
+      });
+      return sortTodos(updatedTodos); // ここでソートを適用
+    });
   };
 
   const deleteTodo = (id: string) => {
-    setTodos(todos.filter(todo => todo.id !== id));
+    setTodos(prevTodos => sortTodos(prevTodos.filter(todo => todo.id !== id))); // ここでソートを適用
   };
 
   const updateTodo = (id: string, newText: string, newDueDate?: Date) => {
-    setTodos(
-      todos.map(todo => {
+    setTodos(prevTodos => {
+      const updatedTodos = prevTodos.map(todo => {
         if (todo.id === id) {
           return {
             ...todo,
@@ -138,8 +153,9 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           };
         }
         return todo;
-      })
-    );
+      });
+      return sortTodos(updatedTodos); // ここでソートを適用
+    });
   };
 
   return (
