@@ -9,7 +9,10 @@
     "web": "expo start --web",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json}\"",
-    "test": "jest"
+    "test": "jest",
+    "detox:build": "detox build -c android.emu.debug",
+    "detox:test": "detox test -c android.emu.debug",
+    "detox:test:debug": "detox test -c android.emu.debug --loglevel trace"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -20,6 +23,7 @@
     "date-fns": "^4.1.0",
     "expo": "~54.0.32",
     "expo-asset": "~12.0.12",
+    "expo-dev-client": "~6.0.20",
     "expo-font": "~14.0.11",
     "expo-status-bar": "~3.0.9",
     "react": "19.1.0",
@@ -33,6 +37,9 @@
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/react": "~19.1.0",
+    "detox": "^20.47.0",
+    "detox-cli": "^20.47.0",
+    "jest": "^30.2.0",
     "prettier": "^3.8.1",
     "react-test-renderer": "^19.1.0",
     "typescript": "~5.9.2"

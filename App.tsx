@@ -19,9 +19,9 @@ const theme = {
     ...DefaultTheme.colors,
     primary: '#6200ee',
     secondary: '#03dac4', // Adjusted from accent
-    background: '#ffffff',
-    surface: '#ffffff',
-    onSurface: '#000000',
+    background: '#ffffee',
+    surface: '#ffffee',
+    onSurface: '#000ee0',
   },
 };
 

@@ -170,13 +170,33 @@ export default function TasksScreen() {
           right={() =>
             isEditing ? (
               <View style={{ flexDirection: 'row' }}>
-                <IconButton icon="check" onPress={handleUpdate} size={20} accessibilityLabel="save-todo" />
-                <IconButton icon="close" onPress={cancelEditing} size={20} accessibilityLabel="cancel-editing" />
+                <IconButton
+                  icon="check"
+                  onPress={handleUpdate}
+                  size={20}
+                  accessibilityLabel="save-todo"
+                />
+                <IconButton
+                  icon="close"
+                  onPress={cancelEditing}
+                  size={20}
+                  accessibilityLabel="cancel-editing"
+                />
               </View>
             ) : (
               <View style={{ flexDirection: 'row' }}>
-                <IconButton icon="pencil" onPress={() => startEditing(item)} size={20} accessibilityLabel="edit-todo" />
-                <IconButton icon="delete" onPress={() => deleteTodo(item.id)} size={20} accessibilityLabel="delete-todo" />
+                <IconButton
+                  icon="pencil"
+                  onPress={() => startEditing(item)}
+                  size={20}
+                  accessibilityLabel="edit-todo"
+                />
+                <IconButton
+                  icon="delete"
+                  onPress={() => deleteTodo(item.id)}
+                  size={20}
+                  accessibilityLabel="delete-todo"
+                />
               </View>
             )
           }
@@ -204,6 +224,8 @@ export default function TasksScreen() {
             style={styles.input}
             mode="outlined"
             testID="new-todo-input"
+            autoComplete="off"
+            autoCorrect={false}
           />
           <View style={styles.inputActions}>
             <Button icon="calendar" onPress={showDatePicker}>
@@ -222,12 +244,11 @@ export default function TasksScreen() {
           onCancel={hideDatePicker}
           date={newTodoDueDate || new Date()}
         />
-        
+
         {/* DateTimePicker for editing existing todo - MOVED HERE */}
         <DateTimePickerModal
           isVisible={isEditingDatePickerVisible}
           mode="datetime"
-  
           onConfirm={handleConfirmEditingTodoDate}
           onCancel={hideEditingDatePicker}
           date={editingDueDate || new Date()} // Default to current or existing due date

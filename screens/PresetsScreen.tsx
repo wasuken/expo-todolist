@@ -31,6 +31,73 @@ interface Preset {
 
 const PRESETS_STORAGE_KEY = '@presets';
 
+const PresetNameInput = React.memo(({ value, onBlur }) => {
+  const [localName, setLocalName] = useState(value);
+   // 親の task.text が変わったときに同期
+  useEffect(() => {
+    setLocalName(value);
+  }, [value]);
+
+  // 親に変更を伝えるのは blur 時だけ
+  const handleBlur = () => {
+    onBlur(localName);
+  };
+
+  return (
+    <TextInput
+      label="プリセット名"
+      value={localName}
+      onChangeText={setLocalName}
+      onBlur={handleBlur}
+      mode="outlined"
+      style={styles.input}
+      autoComplete="off"
+      autoCorrect={false}
+    />
+  );
+});
+
+// 子コンポーネント
+const TaskInput = React.memo(
+  ({ task, index, onTextChange, onOffsetChange, onRemove, showRemove }) => {
+    const theme = useTheme();
+    const [localText, setLocalText] = useState(task.text);
+    // 親の task.text が変わったときに同期
+    useEffect(() => {
+      setLocalText(task.text);
+    }, [task.text]);
+
+    // 親に変更を伝えるのは blur 時だけ
+    const handleBlur = () => {
+      onTextChange(localText, index);
+    };
+
+    return (
+      <View style={styles.taskInputRow}>
+        <TextInput
+          label={`タスク ${index + 1}`}
+          value={localText}
+          onChangeText={setLocalText}
+          onBlur={handleBlur}
+          mode="outlined"
+          style={styles.taskTextInput}
+        />
+        <TextInput
+          label="期限(日数)"
+          value={task.dueDaysOffset?.toString() || '0'}
+          onChangeText={value => onOffsetChange(value, index)}
+          keyboardType="numeric"
+          mode="outlined"
+          style={styles.dueOffsetInput}
+        />
+        {showRemove && (
+          <IconButton icon="close-circle" onPress={onRemove} size={20} color={theme.colors.error} />
+        )}
+      </View>
+    );
+  }
+);
+
 export default function PresetsScreen() {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [visible, setVisible] = useState(false);
@@ -136,12 +203,13 @@ export default function PresetsScreen() {
   };
 
   const handleAddTaskInput = () => {
-    setDialogTasks([...dialogTasks, { text: '', dueDaysOffset: 0 }]);
+    setDialogTasks([...dialogTasks, { text: '', dueDaysOffset: 1 }]);
   };
 
   const handleRemoveTaskInput = (index: number) => {
     const newTasks = [...dialogTasks];
     newTasks.splice(index, 1);
+    console.log("debug", index, dialogTasks, newTasks);
     setDialogTasks(newTasks);
   };
 
@@ -200,40 +268,21 @@ export default function PresetsScreen() {
             <Dialog.Title>{isEditing ? 'プリセットを編集' : '新規プリセット'}</Dialog.Title>
             <Dialog.Content style={{ flexGrow: 1 }}>
               <ScrollView>
-                <TextInput
-                  label="プリセット名"
-                  value={presetName}
-                  onChangeText={setPresetName}
-                  mode="outlined"
-                  style={styles.input}
-                />
+<PresetNameInput
+  value={presetName}
+  onBlur={(name) => setPresetName(name)}
+/>
                 <List.Subheader>プリセットタスク</List.Subheader>
                 {dialogTasks.map((task, index) => (
-                  <View key={index} style={styles.taskInputRow}>
-                    <TextInput
-                      label={`タスク ${index + 1}`}
-                      value={task.text}
-                      onChangeText={text => handleTaskTextChange(text, index)}
-                      mode="outlined"
-                      style={styles.taskTextInput}
-                    />
-                    <TextInput
-                      label="期限(日数)"
-                      value={task.dueDaysOffset?.toString() || '0'}
-                      onChangeText={value => handleDueDaysOffsetChange(value, index)}
-                      keyboardType="numeric"
-                      mode="outlined"
-                      style={styles.dueOffsetInput}
-                    />
-                    {dialogTasks.length > 1 && (
-                      <IconButton
-                        icon="close-circle"
-                        onPress={() => handleRemoveTaskInput(index)}
-                        size={20}
-                        color={theme.colors.error}
-                      />
-                    )}
-                  </View>
+                  <TaskInput
+                    key={index}
+                    task={task}
+                    index={index}
+                    onTextChange={handleTaskTextChange}
+                    onOffsetChange={handleDueDaysOffsetChange}
+                    onRemove={() => handleRemoveTaskInput(index)}
+                    showRemove={dialogTasks.length > 1}
+                  />
                 ))}
                 <Button
                   icon="plus"

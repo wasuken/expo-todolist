@@ -26,6 +26,8 @@ export const useTodos = () => useContext(TodoContext);
 
 const STORAGE_KEY = '@todos';
 
+let todoCounter = 0;
+
 export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [todos, setTodos] = useState<Todo[]>([]);
 
@@ -94,8 +96,9 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const addTodo = (text: string, dueDate?: Date) => {
     if (text.trim() === '') return;
+    todoCounter += 1;
     const newTodo: Todo = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${todoCounter}-${Math.random()}`,
       text: text.trim(),
       completed: false,
       createdAt: new Date(),
