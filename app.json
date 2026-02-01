@@ -21,7 +21,8 @@
         "backgroundColor": "#ffffee"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.wasulisp.todolist"
     },
     "web": {
       "favicon": "./assets/favicon.png"
