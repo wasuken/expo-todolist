@@ -1,4 +1,5 @@
 import React from 'react';
+import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -22,8 +23,8 @@ const theme = {
     primary: '#6200ee',
     secondary: '#03dac4',
     background: '#ffffee',
-    surface: '#ffffee',
-    onSurface: '#000ee0',
+    surface: '#999999',
+    onSurface: '#ffffee',
   },
 };
 
@@ -62,6 +63,7 @@ function MainTabs() {
 export default function App() {
   return (
     <PaperProvider theme={theme}>
+      <StatusBar style="light" />
       <TodoProvider>
         <NavigationContainer>
           <Stack.Navigator screenOptions={{ headerShown: false }}>
