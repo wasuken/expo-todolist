@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import {
   Appbar,
@@ -8,23 +8,24 @@ import {
   IconButton,
   useTheme,
   Snackbar,
+  Card,
 } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-// ナビゲーションの型定義
+// --- 型定義 ---
 type RootStackParamList = {
   MainTabs: undefined;
   PresetEdit: { presetId?: string };
 };
 type PresetEditScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'PresetEdit'>;
 
-// データ構造の定義
 interface PresetTask {
   id: string;
   text: string;
-  dueDaysOffset?: number;
+  dueHoursOffset?: number;
+  checklist?: string[];
 }
 
 interface Preset {
@@ -37,64 +38,133 @@ interface Preset {
 const PRESETS_STORAGE_KEY = '@presets';
 
 // --- メモ化されたコンポーネント ---
+
+const MemoizedChecklistItemInput = React.memo(
+  ({
+    value,
+    taskIndex,
+    itemIndex,
+    onChecklistItemChange,
+    onRemove,
+  }: {
+    value: string;
+    taskIndex: number;
+    itemIndex: number;
+    onChecklistItemChange: (taskIndex: number, itemIndex: number, text: string) => void;
+    onRemove: (taskIndex: number, itemIndex: number) => void;
+  }) => {
+    return (
+      <View style={styles.checklistItemRow}>
+        <TextInput
+          dense
+          value={value}
+          onChangeText={text => onChecklistItemChange(taskIndex, itemIndex, text)}
+          style={styles.checklistItemInput}
+          autoComplete="off"
+          autoCorrect={false}
+        />
+        <IconButton icon="close" size={16} onPress={() => onRemove(taskIndex, itemIndex)} />
+      </View>
+    );
+  }
+);
+
 const MemoizedTaskInputRow = React.memo(
   ({
     item,
     index,
     onTaskTextChange,
-    onDueDaysOffsetChange,
+    onDueHoursOffsetChange,
     onRemove,
     canRemove,
+    onChecklistItemChange,
+    onAddChecklistItem,
+    onRemoveChecklistItem,
   }: {
     item: PresetTask;
     index: number;
     onTaskTextChange: (index: number, text: string) => void;
-    onDueDaysOffsetChange: (index: number, value: string) => void;
+    onDueHoursOffsetChange: (index: number, value: string) => void;
     onRemove: (index: number) => void;
     canRemove: boolean;
+    onChecklistItemChange: (taskIndex: number, itemIndex: number, text: string) => void;
+    onAddChecklistItem: (taskIndex: number) => void;
+    onRemoveChecklistItem: (taskIndex: number, itemIndex: number) => void;
   }) => {
     const theme = useTheme();
+    const [expanded, setExpanded] = useState(false);
+
     return (
-      <View style={styles.taskInputRow}>
-        <TextInput
-          label={`タスク ${index + 1}`}
-          value={item.text}
-          onChangeText={text => onTaskTextChange(index, text)}
-          mode="outlined"
-          style={styles.taskTextInput}
-          autoComplete="off"
-          autoCorrect={false}
-        />
-        <TextInput
-          label="期限(日数)"
-          value={item.dueDaysOffset?.toString() || '0'}
-          onChangeText={value => onDueDaysOffsetChange(index, value)}
-          keyboardType="numeric"
-          mode="outlined"
-          style={styles.dueOffsetInput}
-        />
-        {canRemove && (
-          <IconButton
-            icon="close-circle"
-            onPress={() => onRemove(index)}
-            size={20}
-            color={theme.colors.error}
+      <Card style={styles.taskCard}>
+        <View style={styles.taskInputRow}>
+          <TextInput
+            label={`タスク ${index + 1}`}
+            value={item.text}
+            onChangeText={text => onTaskTextChange(index, text)}
+            mode="outlined"
+            style={styles.taskTextInput}
+            autoComplete="off"
+            autoCorrect={false}
           />
-        )}
-      </View>
+          <TextInput
+            label="期限(時間)"
+            value={item.dueHoursOffset?.toString() || '0'}
+            onChangeText={value => onDueHoursOffsetChange(index, value)}
+            keyboardType="numeric"
+            mode="outlined"
+            style={styles.dueOffsetInput}
+          />
+          {canRemove && (
+            <IconButton
+              icon="close-circle"
+              onPress={() => onRemove(index)}
+              size={20}
+              color={theme.colors.error}
+            />
+          )}
+        </View>
+        <List.Accordion
+          title="チェックリスト"
+          left={props => <List.Icon {...props} icon="format-list-checks" />}
+          expanded={expanded}
+          onPress={() => setExpanded(!expanded)}
+        >
+          <View style={styles.checklistContainer}>
+            {(item.checklist || []).map((checklistItem, itemIndex) => (
+              <MemoizedChecklistItemInput
+                key={itemIndex}
+                value={checklistItem}
+                taskIndex={index}
+                itemIndex={itemIndex}
+                onChecklistItemChange={onChecklistItemChange}
+                onRemove={onRemoveChecklistItem}
+              />
+            ))}
+            <Button
+              icon="plus"
+              mode="text"
+              onPress={() => onAddChecklistItem(index)}
+              style={styles.addChecklistItemButton}
+            >
+              項目を追加
+            </Button>
+          </View>
+        </List.Accordion>
+      </Card>
     );
   }
 );
-// --- ここまでメモ化コンポーネント ---
 
+// --- メインコンポーネント ---
 export default function PresetEditScreen() {
   const navigation = useNavigation<PresetEditScreenNavigationProp>();
   const route = useRoute<any>();
   const theme = useTheme();
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const [preset, setPreset] = useState<Partial<Preset>>({
     name: '',
-    tasks: [{ id: Math.random().toString(), text: '', dueDaysOffset: 1 }],
+    tasks: [{ id: Math.random().toString(), text: '', dueHoursOffset: 24, checklist: [] }],
   });
   const [isNew, setIsNew] = useState(true);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -129,7 +199,13 @@ export default function PresetEditScreen() {
     try {
       const storedPresets = await AsyncStorage.getItem(PRESETS_STORAGE_KEY);
       let presets: Preset[] = storedPresets ? JSON.parse(storedPresets) : [];
-      const tasks = preset.tasks?.filter(t => t.text.trim() !== '') || [];
+      
+      const tasks = (preset.tasks || [])
+        .filter(t => t.text.trim() !== '')
+        .map(t => ({
+          ...t,
+          checklist: (t.checklist || []).filter(c => c.trim() !== ''),
+        }));
 
       if (isNew) {
         const newPreset: Preset = {
@@ -152,6 +228,11 @@ export default function PresetEditScreen() {
     }
   };
 
+  const scrollToEnd = () => {
+    setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+  };
+
+  // --- タスク & チェックリストのハンドラ ---
   const updatePresetName = (name: string) => {
     setPreset(p => ({ ...p, name }));
   };
@@ -164,11 +245,11 @@ export default function PresetEditScreen() {
     });
   }, []);
 
-  const handleDueDaysOffsetChange = useCallback((index: number, value: string) => {
+  const handleDueHoursOffsetChange = useCallback((index: number, value: string) => {
     setPreset(p => {
       const newTasks = [...(p.tasks || [])];
       const offset = Number(value);
-      newTasks[index] = { ...newTasks[index], dueDaysOffset: isNaN(offset) ? undefined : offset };
+      newTasks[index] = { ...newTasks[index], dueHoursOffset: isNaN(offset) ? undefined : offset };
       return { ...p, tasks: newTasks };
     });
   }, []);
@@ -176,14 +257,53 @@ export default function PresetEditScreen() {
   const handleAddTaskInput = useCallback(() => {
     setPreset(p => ({
       ...p,
-      tasks: [...(p.tasks || []), { id: Math.random().toString(), text: '', dueDaysOffset: 1 }],
+      tasks: [
+        ...(p.tasks || []),
+        { id: Math.random().toString(), text: '', dueHoursOffset: 24, checklist: [] },
+      ],
     }));
+    scrollToEnd();
   }, []);
 
   const handleRemoveTaskInput = useCallback((index: number) => {
     setPreset(p => ({ ...p, tasks: (p.tasks || []).filter((_, i) => i !== index) }));
   }, []);
 
+  const handleChecklistItemChange = useCallback(
+    (taskIndex: number, itemIndex: number, text: string) => {
+      setPreset(p => {
+        const newTasks = [...(p.tasks || [])];
+        const newChecklist = [...(newTasks[taskIndex].checklist || [])];
+        newChecklist[itemIndex] = text;
+        newTasks[taskIndex] = { ...newTasks[taskIndex], checklist: newChecklist };
+        return { ...p, tasks: newTasks };
+      });
+    },
+    []
+  );
+
+  const handleAddChecklistItem = useCallback((taskIndex: number) => {
+    setPreset(p => {
+      const newTasks = [...(p.tasks || [])];
+      const newChecklist = [...(newTasks[taskIndex].checklist || []), ''];
+      newTasks[taskIndex] = { ...newTasks[taskIndex], checklist: newChecklist };
+      return { ...p, tasks: newTasks };
+    });
+    scrollToEnd();
+  }, []);
+
+  const handleRemoveChecklistItem = useCallback((taskIndex: number, itemIndex: number) => {
+    setPreset(p => {
+      const newTasks = [...(p.tasks || [])];
+      const newChecklist = (newTasks[taskIndex].checklist || []).filter(
+        (_, i) => i !== itemIndex
+      );
+      newTasks[taskIndex] = { ...newTasks[taskIndex], checklist: newChecklist };
+      return { ...p, tasks: newTasks };
+    });
+  }, []);
+
+  // --- レンダリング ---
   return (
     <>
       <Appbar.Header>
@@ -198,7 +318,11 @@ export default function PresetEditScreen() {
         style={styles.container}
         keyboardVerticalOffset={80}
       >
-        <ScrollView style={styles.scrollView}>
+        <ScrollView 
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContentContainer}
+        >
           <View style={styles.content}>
             <TextInput
               label="プリセット名"
@@ -214,9 +338,12 @@ export default function PresetEditScreen() {
                 item={task}
                 index={index}
                 onTaskTextChange={handleTaskTextChange}
-                onDueDaysOffsetChange={handleDueDaysOffsetChange}
+                onDueHoursOffsetChange={handleDueHoursOffsetChange}
                 onRemove={handleRemoveTaskInput}
                 canRemove={(preset.tasks?.length || 0) > 1}
+                onChecklistItemChange={handleChecklistItemChange}
+                onAddChecklistItem={handleAddChecklistItem}
+                onRemoveChecklistItem={handleRemoveChecklistItem}
               />
             ))}
             <Button
@@ -248,6 +375,9 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  scrollContentContainer: {
+    paddingBottom: 40, // スクロール領域の末尾に余白を追加
+  },
   content: {
     padding: 16,
   },
@@ -256,6 +386,10 @@ const styles = StyleSheet.create({
   },
   addTaskButton: {
     marginTop: 16,
+  },
+  taskCard: {
+    marginBottom: 12,
+    padding: 8,
   },
   taskInputRow: {
     flexDirection: 'row',
@@ -268,5 +402,22 @@ const styles = StyleSheet.create({
   },
   dueOffsetInput: {
     width: 100,
+  },
+  checklistContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  checklistItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checklistItemInput: {
+    flex: 1,
+    fontSize: 14,
+    height: 32,
+  },
+  addChecklistItemButton: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
   },
 });

@@ -24,7 +24,7 @@ const theme = {
     secondary: '#03dac4',
     background: '#ffffee',
     surface: '#999999',
-    onSurface: '#ffffee',
+    onSurface: '#000000',
   },
 };
 
