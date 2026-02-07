@@ -2,6 +2,12 @@ import React, { createContext, useState, useEffect, ReactNode, useContext } from
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
 // Data structure for a single todo item
 export interface Todo {
   id: string;
@@ -10,14 +16,16 @@ export interface Todo {
   createdAt: Date;
   completedAt?: Date;
   dueDate?: Date;
+  checklist?: ChecklistItem[];
 }
 
 interface TodoContextData {
   todos: Todo[];
-  addTodo: (text: string, dueDate?: Date) => void;
+  addTodo: (text: string, dueDate?: Date, checklist?: string[]) => void;
   toggleTodo: (id: string) => void;
   deleteTodo: (id: string) => void;
-  updateTodo: (id: string, newText: string, newDueDate?: Date) => void;
+  updateTodo: (id: string, newText: string, newDueDate?: Date, newChecklistItem?: string) => void;
+  toggleChecklistItem: (todoId: string, checklistItemId: string) => void;
 }
 
 const TodoContext = createContext<TodoContextData>({} as TodoContextData);
@@ -54,6 +62,7 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             createdAt: new Date(t.createdAt),
             completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
             dueDate: t.dueDate ? new Date(t.dueDate) : undefined,
+            checklist: t.checklist || [], // 古いデータのためにフォールバック
           }));
         }
       } catch (error) {
@@ -108,7 +117,7 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, []);
 
-  const addTodo = (text: string, dueDate?: Date) => {
+  const addTodo = (text: string, dueDate?: Date, checklist?: string[]) => {
     if (text.trim() === '') return;
     todoCounter += 1;
     const newTodo: Todo = {
@@ -117,6 +126,15 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       completed: false,
       createdAt: new Date(),
       dueDate,
+      checklist:
+        checklist?.map(
+          (item, index) =>
+            ({
+              id: `${Date.now()}-cl-${index}-${Math.random()}`,
+              text: item,
+              completed: false,
+            } as ChecklistItem)
+        ) || [],
     };
     setTodos(prevTodos => sortTodos([newTodo, ...prevTodos])); // ここでソートを適用
   };
@@ -126,10 +144,14 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const updatedTodos = prevTodos.map(todo => {
         if (todo.id === id) {
           const isCompleted = !todo.completed;
+          // 親タスクの完了状態に合わせてチェックリストも更新
+          const newChecklist =
+            todo.checklist?.map(item => ({ ...item, completed: isCompleted })) || [];
           return {
             ...todo,
             completed: isCompleted,
             completedAt: isCompleted ? new Date() : undefined,
+            checklist: newChecklist,
           };
         }
         return todo;
@@ -138,19 +160,55 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   };
 
+  const toggleChecklistItem = (todoId: string, checklistItemId: string) => {
+    setTodos(prevTodos => {
+      const updatedTodos = prevTodos.map(todo => {
+        if (todo.id === todoId) {
+          const newChecklist =
+            todo.checklist?.map(item => {
+              if (item.id === checklistItemId) {
+                return { ...item, completed: !item.completed };
+              }
+              return item;
+            }) || [];
+          // すべてのチェックリスト項目が完了したら親タスクも完了にする
+          const allCompleted = newChecklist.every(item => item.completed);
+          return {
+            ...todo,
+            checklist: newChecklist,
+            completed: allCompleted,
+            completedAt: allCompleted ? new Date() : undefined,
+          };
+        }
+        return todo;
+      });
+      return sortTodos(updatedTodos);
+    });
+  };
+
   const deleteTodo = (id: string) => {
     setTodos(prevTodos => sortTodos(prevTodos.filter(todo => todo.id !== id))); // ここでソートを適用
   };
 
-  const updateTodo = (id: string, newText: string, newDueDate?: Date) => {
+  const updateTodo = (
+    id: string,
+    newText: string,
+    newDueDate?: Date,
+    newChecklistItem?: string
+  ) => {
     setTodos(prevTodos => {
       const updatedTodos = prevTodos.map(todo => {
         if (todo.id === id) {
-          return {
-            ...todo,
-            text: newText,
-            dueDate: newDueDate !== undefined ? newDueDate : todo.dueDate, // Update dueDate if provided
-          };
+          const updatedTodo = { ...todo, text: newText, dueDate: newDueDate };
+          if (newChecklistItem && newChecklistItem.trim() !== '') {
+            const newItem: ChecklistItem = {
+              id: `${Date.now()}-cl-${Math.random()}`,
+              text: newChecklistItem.trim(),
+              completed: false,
+            };
+            updatedTodo.checklist = [...(updatedTodo.checklist || []), newItem];
+          }
+          return updatedTodo;
         }
         return todo;
       });
@@ -159,7 +217,9 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <TodoContext.Provider value={{ todos, addTodo, toggleTodo, deleteTodo, updateTodo }}>
+    <TodoContext.Provider
+      value={{ todos, addTodo, toggleTodo, deleteTodo, updateTodo, toggleChecklistItem }}
+    >
       {children}
     </TodoContext.Provider>
   );

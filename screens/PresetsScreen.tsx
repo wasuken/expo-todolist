@@ -3,7 +3,7 @@ import { View, StyleSheet, FlatList } from 'react-native';
 import { Appbar, FAB, List, Button, IconButton, useTheme, Text, Card } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTodos } from '../contexts/TodoContext';
-import { addDays } from 'date-fns';
+import { addHours } from 'date-fns';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -11,7 +11,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 interface PresetTask {
   id: string;
   text: string;
-  dueDaysOffset?: number;
+  dueHoursOffset?: number;
+  checklist?: string[];
 }
 
 interface Preset {
@@ -80,10 +81,10 @@ export default function PresetsScreen() {
     const now = new Date();
     tasks.forEach(presetTask => {
       let dueDate: Date | undefined = undefined;
-      if (presetTask.dueDaysOffset !== undefined) {
-        dueDate = addDays(now, presetTask.dueDaysOffset);
+      if (presetTask.dueHoursOffset !== undefined) {
+        dueDate = addHours(now, presetTask.dueHoursOffset);
       }
-      addTodo(presetTask.text, dueDate);
+      addTodo(presetTask.text, dueDate, presetTask.checklist);
     });
   };
 
@@ -91,7 +92,7 @@ export default function PresetsScreen() {
     <Card style={styles.card}>
       <List.Item
         title={item.name}
-        description={`タスク数: ${item.tasks.length}`}
+        description={`タスク数: ${item.tasks.length} / チェックリスト項目: ${item.tasks.reduce((acc, task) => acc + (task.checklist?.length || 0), 0)}`}
         right={() => (
           <View style={styles.actions}>
             <Button

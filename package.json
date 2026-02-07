@@ -5,6 +5,7 @@
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
+    "android:preview": "eas build --profile preview --platform android",
     "ios": "expo start --ios",
     "web": "expo start --web",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json}\"",

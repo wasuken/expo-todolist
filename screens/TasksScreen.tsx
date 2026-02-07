@@ -11,13 +11,14 @@ import {
   useTheme,
   Text,
   Chip,
+  Divider,
 } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { format, formatDistanceToNowStrict } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
-import { useTodos, Todo } from '../contexts/TodoContext';
+import { useTodos, Todo, ChecklistItem as ChecklistItemType } from '../contexts/TodoContext';
 
 const DueDateChip = ({
   date,
@@ -54,22 +55,50 @@ const DueDateChip = ({
   );
 };
 
+const ChecklistItem = ({
+  item,
+  todoId,
+  onToggle,
+}: {
+  item: ChecklistItemType;
+  todoId: string;
+  onToggle: (todoId: string, itemId: string) => void;
+}) => {
+  return (
+    <List.Item
+      title={item.text}
+      titleStyle={{
+        textDecorationLine: item.completed ? 'line-through' : 'none',
+        fontSize: 14,
+        marginLeft: -10,
+      }}
+      left={() => (
+        <Checkbox
+          status={item.completed ? 'checked' : 'unchecked'}
+          onPress={() => onToggle(todoId, item.id)}
+        />
+      )}
+      style={styles.checklistItem}
+    />
+  );
+};
+
 export default function TasksScreen() {
-  const { todos, addTodo, toggleTodo, deleteTodo, updateTodo } = useTodos();
+  const { todos, addTodo, toggleTodo, deleteTodo, updateTodo, toggleChecklistItem } = useTodos();
   const [newTodoText, setNewTodoText] = useState('');
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [editingDueDate, setEditingDueDate] = useState<Date | undefined>(undefined);
+  const [newChecklistItemText, setNewChecklistItemText] = useState('');
 
-  const [isDatePickerVisible, setDatePickerVisibility] = useState(false); // For new todo
-  const [isEditingDatePickerVisible, setEditingDatePickerVisibility] = useState(false); // For editing existing todo
-  const [newTodoDueDate, setNewTodoDueDate] = useState<Date | undefined>(undefined); // For new todo
+  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+  const [isEditingDatePickerVisible, setEditingDatePickerVisibility] = useState(false);
+  const [newTodoDueDate, setNewTodoDueDate] = useState<Date | undefined>(undefined);
 
   const theme = useTheme();
 
   const showDatePicker = () => setDatePickerVisibility(true);
   const hideDatePicker = () => setDatePickerVisibility(false);
-
   const showEditingDatePicker = () => setEditingDatePickerVisibility(true);
   const hideEditingDatePicker = () => setEditingDatePickerVisibility(false);
 
@@ -93,26 +122,43 @@ export default function TasksScreen() {
   const startEditing = (todo: Todo) => {
     setEditingTodoId(todo.id);
     setEditingText(todo.text);
-    setEditingDueDate(todo.dueDate); // Initialize with existing due date
+    setEditingDueDate(todo.dueDate);
+  };
+
+  const handleAddChecklistItem = () => {
+    if (!editingTodoId || newChecklistItemText.trim() === '') return;
+    // 編集中のテキストや日付はそのままに、チェックリスト項目のみ追加
+    updateTodo(editingTodoId, editingText, editingDueDate, newChecklistItemText);
+    setNewChecklistItemText(''); // 入力フィールドをクリアして次の入力を促す
   };
 
   const handleUpdate = () => {
     if (!editingTodoId) return;
-    updateTodo(editingTodoId, editingText, editingDueDate); // Pass editingDueDate
+    // 最後に残っているかもしれないチェックリスト項目を追加
+    if (newChecklistItemText.trim() !== '') {
+      updateTodo(editingTodoId, editingText, editingDueDate, newChecklistItemText);
+    } else {
+      // チェックリスト項目がなければ、テキストと日付のみ更新
+      updateTodo(editingTodoId, editingText, editingDueDate);
+    }
+    
+    // 編集モードを終了
     setEditingTodoId(null);
     setEditingText('');
-    setEditingDueDate(undefined); // Clear editing state
-    
+    setEditingDueDate(undefined);
+    setNewChecklistItemText('');
   };
 
   const cancelEditing = () => {
     setEditingTodoId(null);
     setEditingText('');
     setEditingDueDate(undefined);
+    setNewChecklistItemText('');
   };
 
   const renderTodo = ({ item }: { item: Todo }) => {
     const isEditing = editingTodoId === item.id;
+    const hasChecklist = item.checklist && item.checklist.length > 0;
 
     return (
       <Card style={styles.card}>
@@ -124,8 +170,7 @@ export default function TasksScreen() {
                 value={editingText}
                 onChangeText={setEditingText}
                 autoFocus
-                returnKeyType="done"
-                onSubmitEditing={handleUpdate}
+                returnKeyType="next" // 連続追加できるように
               />
             ) : (
               <Text
@@ -138,27 +183,22 @@ export default function TasksScreen() {
               </Text>
             )
           }
-          description={() => {
-            // In both view and edit mode, show the due date if it exists.
-            // In edit mode, additionally show the "Set Due Date" button if it doesn't exist.
-            if (item.dueDate) {
-              return (
+          description={() => (
+            <>
+              {item.dueDate && (
                 <DueDateChip
                   date={new Date(item.dueDate)}
                   onPress={isEditing ? showEditingDatePicker : undefined}
                   editable={isEditing}
                 />
-              );
-            }
-            if (isEditing) {
-              return (
+              )}
+              {isEditing && !item.dueDate && (
                 <Button icon="calendar" onPress={showEditingDatePicker} compact mode="text">
                   期限を設定
                 </Button>
-              );
-            }
-            return null;
-          }}
+              )}
+            </>
+          )}
           descriptionStyle={styles.description}
           left={() => (
             <View style={styles.checkboxContainer}>
@@ -170,39 +210,43 @@ export default function TasksScreen() {
           )}
           right={() =>
             isEditing ? (
-              <View style={{ flexDirection: 'row' }}>
-                <IconButton
-                  icon="check"
-                  onPress={handleUpdate}
-                  size={20}
-                  accessibilityLabel="save-todo"
-                />
-                <IconButton
-                  icon="close"
-                  onPress={cancelEditing}
-                  size={20}
-                  accessibilityLabel="cancel-editing"
-                />
+              <View style={styles.row}>
+                <IconButton icon="check" onPress={handleUpdate} size={20} />
+                <IconButton icon="close" onPress={cancelEditing} size={20} />
               </View>
             ) : (
-              <View style={{ flexDirection: 'row' }}>
-                <IconButton
-                  icon="pencil"
-                  onPress={() => startEditing(item)}
-                  size={20}
-                  accessibilityLabel="edit-todo"
-                />
-                <IconButton
-                  icon="delete"
-                  onPress={() => deleteTodo(item.id)}
-                  size={20}
-                  accessibilityLabel="delete-todo"
-                />
+              <View style={styles.row}>
+                <IconButton icon="pencil" onPress={() => startEditing(item)} size={20} />
+                <IconButton icon="delete" onPress={() => deleteTodo(item.id)} size={20} />
               </View>
             )
           }
           style={styles.listItem}
         />
+        {hasChecklist && <Divider />}
+        {hasChecklist &&
+          item.checklist?.map(checklistItem => (
+            <ChecklistItem
+              key={checklistItem.id}
+              item={checklistItem}
+              todoId={item.id}
+              onToggle={toggleChecklistItem}
+            />
+          ))}
+        {isEditing && (
+          <View style={styles.addChecklistItemContainer}>
+            <TextInput
+              label="新しいチェックリスト項目"
+              value={newChecklistItemText}
+              onChangeText={setNewChecklistItemText}
+              dense
+              style={styles.addChecklistItemInput}
+              onSubmitEditing={handleAddChecklistItem} // Enterでも追加
+              returnKeyType="done"
+            />
+            <IconButton icon="plus" onPress={handleAddChecklistItem} size={20} />
+          </View>
+        )}
       </Card>
     );
   };
@@ -245,14 +289,12 @@ export default function TasksScreen() {
           onCancel={hideDatePicker}
           date={newTodoDueDate || new Date()}
         />
-
-        {/* DateTimePicker for editing existing todo - MOVED HERE */}
         <DateTimePickerModal
           isVisible={isEditingDatePickerVisible}
           mode="datetime"
           onConfirm={handleConfirmEditingTodoDate}
           onCancel={hideEditingDatePicker}
-          date={editingDueDate || new Date()} // Default to current or existing due date
+          date={editingDueDate || new Date()}
         />
 
         <FlatList
@@ -268,59 +310,31 @@ export default function TasksScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  inputCard: {
-    margin: 8,
-    padding: 12,
-  },
-  input: {
-    marginBottom: 12,
-  },
-  inputActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+  container: { flex: 1 },
+  inputCard: { margin: 8, padding: 12 },
+  input: { marginBottom: 12 },
+  inputActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   addButton: {},
-  list: {
-    flex: 1,
-    paddingHorizontal: 8,
-  },
-  card: {
-    marginBottom: 8,
-  },
-  listItem: {
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-  },
-  title: {
-    fontSize: 16,
-  },
-  description: {
-    marginTop: 8,
-  },
-  chip: {
-    alignSelf: 'flex-start',
-  },
-  chipPast: {
-    backgroundColor: '#ffcdd2',
-  },
+  list: { flex: 1, paddingHorizontal: 8 },
+  card: { marginBottom: 8 },
+  listItem: { paddingVertical: 8, paddingHorizontal: 8 },
+  title: { fontSize: 16 },
+  description: { marginTop: 4 },
+  chip: { alignSelf: 'flex-start' },
+  chipPast: { backgroundColor: '#ffcdd2' },
   chipText: {},
-  chipTextPast: {
-    color: '#b71c1c',
+  chipTextPast: { color: '#b71c1c' },
+  checkboxContainer: { marginRight: -4, marginLeft: -8, transform: [{ scale: 0.8 }] },
+  editInput: { height: 40, flex: 1, fontSize: 16, paddingHorizontal: 0, backgroundColor: 'transparent' },
+  row: { flexDirection: 'row' },
+  checklistItem: { paddingVertical: 0, paddingLeft: 32 },
+  addChecklistItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
-  checkboxContainer: {
-    marginRight: -4,
-    marginLeft: -8,
-    transform: [{ scale: 0.8 }],
-  },
-  editInput: {
-    height: 40,
+  addChecklistItemInput: {
     flex: 1,
-    fontSize: 16,
-    paddingHorizontal: 0,
-    backgroundColor: 'transparent',
   },
 });
