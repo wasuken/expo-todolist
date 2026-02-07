@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -14,7 +14,6 @@ import {
   Button,
   Card,
   List,
-  Checkbox,
   IconButton,
   useTheme,
   Text,
@@ -26,12 +25,12 @@ import { StatusBar } from 'expo-status-bar';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { format, formatDistanceToNowStrict, addHours } from 'date-fns';
 import { ja } from 'date-fns/locale';
-
 import {
   useTodos,
   Todo,
   ChecklistItem as ChecklistItemType,
   Priority,
+  TodoStatus,
 } from '../contexts/TodoContext';
 
 const DueDateChip = ({
@@ -49,33 +48,54 @@ const DueDateChip = ({
   const isPast = dueDate < now;
   const eightHoursFromNow = addHours(now, 8);
   const isUrgent = !isPast && dueDate < eightHoursFromNow; // Urgent if not past and within 8 hours
-
   const displayDate = formatDistanceToNowStrict(dueDate, { addSuffix: true, locale: ja });
-
   let iconColor = theme.colors.onSurfaceVariant; // Default icon color
-
   if (isPast) {
-    // Original past styling
     iconColor = theme.colors.error; // Keep red for past due
   } else if (isUrgent) {
     iconColor = '#EF5350'; // Explicitly set to a vibrant red for urgent tasks
   }
-
   const content = (
     <Chip
       icon="calendar-clock"
-      style={[styles.chip, isPast && styles.chipPast]} // Revert to original chip styles
-      textStyle={[styles.chipText, isPast && styles.chipTextPast]} // Revert to original chipText styles
-      iconColor={iconColor} // Set icon color based on urgency
+      style={[styles.chip, isPast && styles.chipPast]}
+      textStyle={[styles.chipText, isPast && styles.chipTextPast]}
+      iconColor={iconColor}
     >
       {displayDate}
     </Chip>
   );
-
   return editable && onPress ? (
     <TouchableOpacity onPress={onPress}>{content}</TouchableOpacity>
   ) : (
     content
+  );
+};
+
+const PriorityChip = ({ priority }: { priority: Priority }) => {
+  const theme = useTheme();
+  let chipColor = theme.colors.onSurfaceVariant; // Default color
+  let textColor = theme.colors.onSurface;
+
+  switch (priority) {
+    case Priority.High:
+      chipColor = '#EF5350'; // Red
+      textColor = '#ffffff';
+      break;
+    case Priority.Medium:
+      chipColor = '#FFCA28'; // Amber
+      textColor = '#000000';
+      break;
+    case Priority.Low:
+      chipColor = '#66BB6A'; // Green
+      textColor = '#ffffff';
+      break;
+  }
+
+  return (
+    <Chip style={{ backgroundColor: chipColor, marginRight: 8 }} textStyle={{ color: textColor }}>
+      {priority}
+    </Chip>
   );
 };
 
@@ -97,87 +117,74 @@ const ChecklistItem = ({
         marginLeft: -10,
       }}
       left={() => (
-        <Checkbox
-          status={item.completed ? 'checked' : 'unchecked'}
+        <IconButton
+          icon={item.completed ? 'checkbox-marked' : 'checkbox-blank-outline'}
           onPress={() => onToggle(todoId, item.id)}
+          size={20}
         />
       )}
       style={styles.checklistItem}
     />
   );
 };
-
 export default function TasksScreen() {
-  const { todos, addTodo, toggleTodo, deleteTodo, updateTodo, toggleChecklistItem } = useTodos();
+  const { todos, addTodo, deleteTodo, updateTodo, toggleChecklistItem, updateTodoStatus } =
+    useTodos();
   const [newTodoText, setNewTodoText] = useState('');
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [editingDueDate, setEditingDueDate] = useState<Date | undefined>(undefined);
   const [newChecklistItemText, setNewChecklistItemText] = useState('');
-  const [newTodoPriority, setNewTodoPriority] = useState<Priority>(Priority.Medium); // New state for new todo priority
-  const [editingPriority, setEditingPriority] = useState<Priority | undefined>(undefined); // New state for editing todo priority
-
+  const [newTodoPriority, setNewTodoPriority] = useState<Priority>(Priority.Medium);
+  const [editingPriority, setEditingPriority] = useState<Priority | undefined>(undefined);
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
   const [isEditingDatePickerVisible, setEditingDatePickerVisibility] = useState(false);
   const [newTodoDueDate, setNewTodoDueDate] = useState<Date | undefined>(undefined);
-
+  const [showCompleted, setShowCompleted] = useState<'all' | 'active'>('active'); // New state
   const theme = useTheme();
-
   const showDatePicker = () => setDatePickerVisibility(true);
   const hideDatePicker = () => setDatePickerVisibility(false);
   const showEditingDatePicker = () => setEditingDatePickerVisibility(true);
   const hideEditingDatePicker = () => setEditingDatePickerVisibility(false);
-
   const handleConfirmNewTodoDate = (date: Date) => {
     setNewTodoDueDate(date);
     hideDatePicker();
   };
-
   const handleConfirmEditingTodoDate = (date: Date) => {
     setEditingDueDate(date);
     hideEditingDatePicker();
   };
-
   const handleAddTodo = () => {
-    addTodo(newTodoText, newTodoDueDate, undefined, newTodoPriority); // Pass priority
+    addTodo(newTodoText, newTodoDueDate, undefined, newTodoPriority);
     setNewTodoText('');
     setNewTodoDueDate(undefined);
-    setNewTodoPriority(Priority.Medium); // Reset to default
+    setNewTodoPriority(Priority.Medium);
     Keyboard.dismiss();
   };
-
   const startEditing = (todo: Todo) => {
     setEditingTodoId(todo.id);
     setEditingText(todo.text);
     setEditingDueDate(todo.dueDate);
-    setEditingPriority(todo.priority || Priority.Medium); // Set editing priority, default to Medium
+    setEditingPriority(todo.priority || Priority.Medium);
   };
-
   const handleAddChecklistItem = () => {
     if (!editingTodoId || newChecklistItemText.trim() === '') return;
-    // 編集中のテキストや日付はそのままに、チェックリスト項目のみ追加
     updateTodo(editingTodoId, editingText, editingDueDate, newChecklistItemText);
-    setNewChecklistItemText(''); // 入力フィールドをクリアして次の入力を促す
+    setNewChecklistItemText('');
   };
-
   const handleUpdate = () => {
     if (!editingTodoId) return;
-    // 最後に残っているかもしれないチェックリスト項目を追加
     if (newChecklistItemText.trim() !== '') {
       updateTodo(editingTodoId, editingText, editingDueDate, newChecklistItemText, editingPriority);
     } else {
-      // チェックリスト項目がなければ、テキストと日付と優先度のみ更新
       updateTodo(editingTodoId, editingText, editingDueDate, undefined, editingPriority);
     }
-
-    // 編集モードを終了
     setEditingTodoId(null);
     setEditingText('');
     setEditingDueDate(undefined);
     setNewChecklistItemText('');
     setEditingPriority(undefined);
   };
-
   const cancelEditing = () => {
     setEditingTodoId(null);
     setEditingText('');
@@ -185,19 +192,18 @@ export default function TasksScreen() {
     setNewChecklistItemText('');
     setEditingPriority(undefined);
   };
-
+  const filteredTodos = useMemo(() => {
+    if (showCompleted === 'active') {
+      return todos.filter(todo => todo.status !== 'done');
+    }
+    return todos;
+  }, [todos, showCompleted]);
   const renderTodo = ({ item }: { item: Todo }) => {
     const isEditing = editingTodoId === item.id;
     const hasChecklist = item.checklist && item.checklist.length > 0;
-
+    const statusStyle = StatusStyles[item.status];
     return (
-      <Card
-        style={[
-          styles.card,
-          PriorityWeight[item.priority || Priority.Medium],
-          { marginLeft: PriorityIndentation[item.priority || Priority.Medium] },
-        ]}
-      >
+      <Card style={[styles.card, statusStyle]}>
         <List.Item
           title={
             isEditing ? (
@@ -206,13 +212,13 @@ export default function TasksScreen() {
                 value={editingText}
                 onChangeText={setEditingText}
                 autoFocus
-                returnKeyType="next" // 連続追加できるように
+                returnKeyType="next"
               />
             ) : (
               <Text
                 style={[
                   styles.title,
-                  { textDecorationLine: item.completed ? 'line-through' : 'none' },
+                  { textDecorationLine: item.status === 'done' ? 'line-through' : 'none' },
                 ]}
               >
                 {item.text}
@@ -220,18 +226,35 @@ export default function TasksScreen() {
             )
           }
           description={() => (
-            <>
-              {item.dueDate && (
-                <DueDateChip
-                  date={new Date(item.dueDate)}
-                  onPress={isEditing ? showEditingDatePicker : undefined}
-                  editable={isEditing}
-                />
-              )}
-              {isEditing && !item.dueDate && (
-                <Button icon="calendar" onPress={showEditingDatePicker} compact mode="text">
-                  期限を設定
-                </Button>
+            <View style={styles.descriptionContainer}>
+              <View style={styles.row}>
+                {item.priority && <PriorityChip priority={item.priority} />}
+                {item.dueDate && (
+                  <DueDateChip
+                    date={new Date(item.dueDate)}
+                    onPress={isEditing ? showEditingDatePicker : undefined}
+                    editable={isEditing}
+                  />
+                )}
+                {isEditing && !item.dueDate && (
+                  <Button icon="calendar" onPress={showEditingDatePicker} compact mode="text">
+                    期限を設定
+                  </Button>
+                )}
+              </View>
+              {(item.startedAt || item.completedAt) && (
+                <View style={styles.dateContainer}>
+                  {item.startedAt && (
+                    <Text style={styles.dateText}>
+                      開始: {format(new Date(item.startedAt), 'MM/dd HH:mm')}
+                    </Text>
+                  )}
+                  {item.completedAt && (
+                    <Text style={styles.dateText}>
+                      完了: {format(new Date(item.completedAt), 'MM/dd HH:mm')}
+                    </Text>
+                  )}
+                </View>
               )}
               {isEditing && (
                 <View style={styles.prioritySelectionContainer}>
@@ -248,17 +271,9 @@ export default function TasksScreen() {
                   />
                 </View>
               )}
-            </>
-          )}
-          descriptionStyle={styles.description}
-          left={() => (
-            <View style={styles.checkboxContainer}>
-              <Checkbox
-                status={item.completed ? 'checked' : 'unchecked'}
-                onPress={() => toggleTodo(item.id)}
-              />
             </View>
           )}
+          descriptionStyle={styles.description}
           right={() =>
             isEditing ? (
               <View style={styles.row}>
@@ -274,6 +289,21 @@ export default function TasksScreen() {
           }
           style={styles.listItem}
         />
+
+        <Card.Actions>
+          <SegmentedButtons
+            value={item.status}
+            onValueChange={value => updateTodoStatus(item.id, value as TodoStatus)}
+            density="small"
+            buttons={[
+              { value: 'todo', label: 'Todo' },
+              { value: 'in_progress', label: 'In Progress' },
+              { value: 'done', label: 'Done' },
+            ]}
+            style={styles.statusButtons}
+          />
+        </Card.Actions>
+
         {hasChecklist && <Divider />}
         {hasChecklist &&
           item.checklist?.map(checklistItem => (
@@ -292,7 +322,7 @@ export default function TasksScreen() {
               onChangeText={setNewChecklistItemText}
               dense
               style={styles.addChecklistItemInput}
-              onSubmitEditing={handleAddChecklistItem} // Enterでも追加
+              onSubmitEditing={handleAddChecklistItem}
               returnKeyType="done"
             />
             <IconButton icon="plus" onPress={handleAddChecklistItem} size={20} />
@@ -301,7 +331,6 @@ export default function TasksScreen() {
       </Card>
     );
   };
-
   return (
     <>
       <StatusBar
@@ -310,6 +339,15 @@ export default function TasksScreen() {
       />
       <Appbar.Header>
         <Appbar.Content title="タスク" />
+        <SegmentedButtons
+          value={showCompleted}
+          onValueChange={value => setShowCompleted(value as 'all' | 'active')}
+          buttons={[
+            { value: 'active', label: 'アクティブ' },
+            { value: 'all', label: '全て' },
+          ]}
+          style={styles.visibilityButtons}
+        />
       </Appbar.Header>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <Card style={styles.inputCard}>
@@ -346,7 +384,6 @@ export default function TasksScreen() {
             />
           </View>
         </Card>
-
         <DateTimePickerModal
           isVisible={isDatePickerVisible}
           mode="datetime"
@@ -361,9 +398,8 @@ export default function TasksScreen() {
           onCancel={hideEditingDatePicker}
           date={editingDueDate || new Date()}
         />
-
         <FlatList
-          data={todos}
+          data={filteredTodos}
           renderItem={renderTodo}
           keyExtractor={item => item.id}
           style={styles.list}
@@ -373,25 +409,21 @@ export default function TasksScreen() {
     </>
   );
 }
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   inputCard: { margin: 8, padding: 12 },
   input: { marginBottom: 12 },
   inputActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  addButton: {
-    minWidth: 120,
-  },
+  addButton: { minWidth: 120 },
   list: { flex: 1, paddingHorizontal: 8 },
-  card: { marginBottom: 8 },
-  listItem: { paddingVertical: 8, paddingHorizontal: 8 },
+  card: { marginBottom: 8, borderWidth: 1, borderColor: 'transparent' },
+  listItem: { paddingVertical: 4, paddingHorizontal: 8 },
   title: { fontSize: 16 },
   description: { marginTop: 4 },
   chip: { alignSelf: 'flex-start' },
   chipPast: { backgroundColor: '#ffcdd2' },
   chipText: {},
   chipTextPast: { color: '#b71c1c' },
-  checkboxContainer: { marginRight: -4, marginLeft: -8, transform: [{ scale: 0.8 }] },
   editInput: {
     height: 40,
     flex: 1,
@@ -399,7 +431,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     backgroundColor: 'transparent',
   },
-  row: { flexDirection: 'row' },
+  row: { flexDirection: 'row', alignItems: 'center' },
   checklistItem: { paddingVertical: 0, paddingLeft: 32 },
   addChecklistItemContainer: {
     flexDirection: 'row',
@@ -407,52 +439,51 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 8,
   },
-  addChecklistItemInput: {
-    flex: 1,
-  },
-  titlePriorityContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    flexShrink: 1,
-  },
+  addChecklistItemInput: { flex: 1 },
   prioritySelectionContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 8,
     width: '100%',
   },
-  priorityLabel: {
-    marginRight: 8,
-    fontSize: 14,
+  priorityLabel: { marginRight: 8, fontSize: 14, color: 'gray' },
+  priorityButtons: { flex: 1 },
+  divider: { marginTop: 12, marginBottom: 8 },
+  descriptionContainer: {
+    marginTop: 4,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  dateContainer: {
+    flexDirection: 'row',
+    marginTop: 4,
+  },
+  dateText: {
+    fontSize: 12,
     color: 'gray',
+    marginRight: 8,
   },
-  priorityButtons: {
+  statusButtons: {
     flex: 1,
+    marginHorizontal: 8,
+    marginBottom: 4,
   },
-  divider: {
-    marginTop: 12,
-    marginBottom: 8,
+  statusTodo: {
+    backgroundColor: '#e8f5e9', // Light Green
   },
-  high: {
-    backgroundColor: '#ffcdd2', // 濃いめの赤
+  statusInProgress: {
+    backgroundColor: '#fff9c4', // Light Yellow
   },
-  medium: {
-    backgroundColor: '#fff9c4', // 中くらいの黄色
+  statusDone: {
+    backgroundColor: '#f5f5f5', // Light Grey
+    borderColor: '#e0e0e0',
   },
-  low: {
-    backgroundColor: '#e8f5e9', // 薄い緑
+  visibilityButtons: {
+    width: 200,
   },
 });
-
-export const PriorityWeight: Record<Priority, ViewStyle> = {
-  [Priority.High]: styles.high,
-  [Priority.Medium]: styles.medium,
-  [Priority.Low]: styles.low, // これもlowにした方がいいのでは？
-};
-
-const PriorityIndentation: Record<Priority, number> = {
-  [Priority.High]: 0,
-  [Priority.Medium]: 10,
-  [Priority.Low]: 20,
+const StatusStyles: Record<TodoStatus, ViewStyle> = {
+  todo: styles.statusTodo,
+  in_progress: styles.statusInProgress,
+  done: styles.statusDone,
 };

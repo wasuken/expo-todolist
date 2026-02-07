@@ -9,7 +9,6 @@ export interface ChecklistItem {
   completed: boolean;
 }
 
-// Add this enum
 export enum Priority {
   High = '高',
   Medium = '中',
@@ -22,22 +21,24 @@ export const PriorityWeight: Record<Priority, number> = {
   [Priority.Low]: 3,
 };
 
+export type TodoStatus = 'todo' | 'in_progress' | 'done';
+
 // Data structure for a single todo item
 export interface Todo {
   id: string;
   text: string;
-  completed: boolean;
+  status: TodoStatus;
   createdAt: Date;
+  startedAt?: Date;
   completedAt?: Date;
   dueDate?: Date;
   checklist?: ChecklistItem[];
-  priority?: Priority; // New field
+  priority?: Priority;
 }
 
 interface TodoContextData {
   todos: Todo[];
   addTodo: (text: string, dueDate?: Date, checklist?: string[], priority?: Priority) => void;
-  toggleTodo: (id: string) => void;
   deleteTodo: (id: string) => void;
   updateTodo: (
     id: string,
@@ -46,6 +47,7 @@ interface TodoContextData {
     newChecklistItem?: string,
     newPriority?: Priority
   ) => void;
+  updateTodoStatus: (id: string, status: TodoStatus) => void;
   toggleChecklistItem: (todoId: string, checklistItemId: string) => void;
 }
 
@@ -59,7 +61,7 @@ let todoCounter = 0;
 
 // Function to get the due date group for a todo
 const getDueDateGroup = (todo: Todo, now: Date): number => {
-  if (todo.completed) return 4; // Completed tasks are in their own group
+  if (todo.status === 'done') return 4; // Completed tasks are in their own group
   if (!todo.dueDate) return 3; // No due date
 
   const dueDate = new Date(todo.dueDate);
@@ -68,35 +70,43 @@ const getDueDateGroup = (todo: Todo, now: Date): number => {
   return 2; // Later
 };
 
+const StatusWeight: Record<TodoStatus, number> = {
+  in_progress: 1,
+  todo: 2,
+  done: 3,
+};
+
 // New sorting function
 const sortTodos = (todos: Todo[]): Todo[] => {
   const now = new Date();
 
   return [...todos].sort((a, b) => {
-    // 1. First level: Completed status
-    if (a.completed && !b.completed) return 1;
-    if (!a.completed && b.completed) return -1;
-    if (a.completed && b.completed) return 0; // No sorting within completed tasks
+    // 1. Status
+    const statusA = StatusWeight[a.status];
+    const statusB = StatusWeight[b.status];
+    if (statusA !== statusB) {
+      return statusA - statusB;
+    }
 
-    // 2. Second level: Due date group
+    // 2. Due date group
     const groupA = getDueDateGroup(a, now);
     const groupB = getDueDateGroup(b, now);
     if (groupA !== groupB) {
       return groupA - groupB;
     }
 
-    // 3. Third level: Priority
+    // 3. Priority
     const priorityA = a.priority ? PriorityWeight[a.priority] : PriorityWeight[Priority.Medium];
     const priorityB = b.priority ? PriorityWeight[b.priority] : PriorityWeight[Priority.Medium];
     if (priorityA !== priorityB) {
       return priorityA - priorityB;
     }
 
-    // 4. Fourth level: Due date
+    // 4. Due date
     if (a.dueDate && b.dueDate) {
       return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
     }
-    if (a.dueDate && !b.dueDate) return -1; // Tasks with due date come before tasks without
+    if (a.dueDate && !b.dueDate) return -1;
     if (!a.dueDate && b.dueDate) return 1;
 
     return 0; // Keep original order if all else is equal
@@ -108,30 +118,27 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     const loadAndCleanTodos = async () => {
-      let loadedTodos: Todo[] = [];
       try {
+        // Clear storage for a fresh start as requested
+        await AsyncStorage.removeItem(STORAGE_KEY);
+        // This part is for initial testing, in a real app you would load existing data
         const storedTodos = await AsyncStorage.getItem(STORAGE_KEY);
         if (storedTodos !== null) {
-          loadedTodos = JSON.parse(storedTodos).map((t: any) => ({
+          const loadedTodos = JSON.parse(storedTodos).map((t: any) => ({
             ...t,
             createdAt: new Date(t.createdAt),
+            startedAt: t.startedAt ? new Date(t.startedAt) : undefined,
             completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
             dueDate: t.dueDate ? new Date(t.dueDate) : undefined,
             checklist: t.checklist || [],
-            priority: t.priority || Priority.Medium, // Default to Medium if not set
+            priority: t.priority || Priority.Medium,
+            status: t.status || 'todo',
           }));
+          setTodos(loadedTodos);
         }
       } catch (error) {
         console.error('Failed to load todos.', error);
       }
-
-      // Filter expired tasks after loading
-      const now = new Date();
-      const finalTodos = loadedTodos.filter(todo => {
-        return todo.completed || !todo.dueDate || new Date(todo.dueDate) >= now;
-      });
-
-      setTodos(finalTodos);
     };
 
     loadAndCleanTodos();
@@ -154,8 +161,7 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const now = new Date();
       setTodos(prevTodos =>
         prevTodos.filter(todo => {
-          // Keep the task if it's completed, has no due date, or the due date is in the future
-          return todo.completed || !todo.dueDate || new Date(todo.dueDate) >= now;
+          return todo.status === 'done' || !todo.dueDate || new Date(todo.dueDate) >= now;
         })
       );
     };
@@ -182,7 +188,7 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const newTodo: Todo = {
       id: `${Date.now()}-${todoCounter}-${Math.random()}`,
       text: text.trim(),
-      completed: false,
+      status: 'todo',
       createdAt: new Date(),
       dueDate,
       checklist:
@@ -194,25 +200,25 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               completed: false,
             }) as ChecklistItem
         ) || [],
-      priority, // Add priority here
+      priority,
     };
     setTodos(prevTodos => [newTodo, ...prevTodos]);
   };
 
-  const toggleTodo = (id: string) => {
+  const updateTodoStatus = (id: string, status: TodoStatus) => {
     setTodos(prevTodos =>
       prevTodos.map(todo => {
         if (todo.id === id) {
-          const isCompleted = !todo.completed;
-          // 親タスクの完了状態に合わせてチェックリストも更新
-          const newChecklist =
-            todo.checklist?.map(item => ({ ...item, completed: isCompleted })) || [];
-          return {
-            ...todo,
-            completed: isCompleted,
-            completedAt: isCompleted ? new Date() : undefined,
-            checklist: newChecklist,
-          };
+          const updatedTodo = { ...todo, status };
+          if (status === 'in_progress' && !todo.startedAt) {
+            updatedTodo.startedAt = new Date();
+          }
+          if (status === 'done') {
+            updatedTodo.completedAt = new Date();
+          } else {
+            updatedTodo.completedAt = undefined;
+          }
+          return updatedTodo;
         }
         return todo;
       })
@@ -230,13 +236,9 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               }
               return item;
             }) || [];
-          // すべてのチェックリスト項目が完了したら親タスクも完了にする
-          const allCompleted = newChecklist.every(item => item.completed);
           return {
             ...todo,
             checklist: newChecklist,
-            completed: allCompleted,
-            completedAt: allCompleted ? new Date() : undefined,
           };
         }
         return todo;
@@ -290,9 +292,9 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       value={{
         todos: sortedTodos,
         addTodo,
-        toggleTodo,
         deleteTodo,
         updateTodo,
+        updateTodoStatus,
         toggleChecklistItem,
       }}
     >
