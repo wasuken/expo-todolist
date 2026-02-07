@@ -2,25 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList } from 'react-native';
 import { Appbar, FAB, List, Button, IconButton, useTheme, Text, Card } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useTodos } from '../contexts/TodoContext';
+import { useTodos, Priority } from '../contexts/TodoContext';
+import { Preset, PresetTask } from '../types'; // Import from centralized types
 import { addHours } from 'date-fns';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
-// --- データ構造と型の定義 ---
-interface PresetTask {
-  id: string;
-  text: string;
-  dueHoursOffset?: number;
-  checklist?: string[];
-}
-
-interface Preset {
-  id: string;
-  name: string;
-  tasks: PresetTask[];
-  createdAt: Date;
-}
 
 type RootStackParamList = {
   MainTabs: undefined;
@@ -84,7 +70,7 @@ export default function PresetsScreen() {
       if (presetTask.dueHoursOffset !== undefined) {
         dueDate = addHours(now, presetTask.dueHoursOffset);
       }
-      addTodo(presetTask.text, dueDate, presetTask.checklist);
+      addTodo(presetTask.text, dueDate, presetTask.checklist, presetTask.priority);
     });
   };
 
