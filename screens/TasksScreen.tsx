@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, FlatList, Keyboard, Platform, TouchableOpacity } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  FlatList,
+  Keyboard,
+  Platform,
+  TouchableOpacity,
+  ViewStyle,
+} from 'react-native';
 import {
   Appbar,
   TextInput,
@@ -16,10 +24,15 @@ import {
 } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
-import { format, formatDistanceToNowStrict } from 'date-fns';
+import { format, formatDistanceToNowStrict, addHours } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
-import { useTodos, Todo, ChecklistItem as ChecklistItemType, Priority } from '../contexts/TodoContext';
+import {
+  useTodos,
+  Todo,
+  ChecklistItem as ChecklistItemType,
+  Priority,
+} from '../contexts/TodoContext';
 
 const DueDateChip = ({
   date,
@@ -32,18 +45,28 @@ const DueDateChip = ({
 }) => {
   const theme = useTheme();
   const now = new Date();
-  const isPast = date < now;
+  const dueDate = new Date(date); // Ensure it's a Date object
+  const isPast = dueDate < now;
+  const eightHoursFromNow = addHours(now, 8);
+  const isUrgent = !isPast && dueDate < eightHoursFromNow; // Urgent if not past and within 8 hours
 
-  const displayDate = formatDistanceToNowStrict(date, { addSuffix: true, locale: ja });
+  const displayDate = formatDistanceToNowStrict(dueDate, { addSuffix: true, locale: ja });
+
+  let iconColor = theme.colors.onSurfaceVariant; // Default icon color
+
+  if (isPast) {
+    // Original past styling
+    iconColor = theme.colors.error; // Keep red for past due
+  } else if (isUrgent) {
+    iconColor = '#EF5350'; // Explicitly set to a vibrant red for urgent tasks
+  }
 
   const content = (
     <Chip
       icon="calendar-clock"
-      style={[styles.chip, isPast && styles.chipPast]}
-      textStyle={[styles.chipText, isPast && styles.chipTextPast]}
-      theme={{
-        colors: { ...theme.colors, primary: isPast ? theme.colors.error : theme.colors.primary },
-      }}
+      style={[styles.chip, isPast && styles.chipPast]} // Revert to original chip styles
+      textStyle={[styles.chipText, isPast && styles.chipTextPast]} // Revert to original chipText styles
+      iconColor={iconColor} // Set icon color based on urgency
     >
       {displayDate}
     </Chip>
@@ -146,7 +169,7 @@ export default function TasksScreen() {
       // チェックリスト項目がなければ、テキストと日付と優先度のみ更新
       updateTodo(editingTodoId, editingText, editingDueDate, undefined, editingPriority);
     }
-    
+
     // 編集モードを終了
     setEditingTodoId(null);
     setEditingText('');
@@ -168,7 +191,13 @@ export default function TasksScreen() {
     const hasChecklist = item.checklist && item.checklist.length > 0;
 
     return (
-      <Card style={styles.card}>
+      <Card
+        style={[
+          styles.card,
+          PriorityWeight[item.priority || Priority.Medium],
+          { marginLeft: PriorityIndentation[item.priority || Priority.Medium] },
+        ]}
+      >
         <List.Item
           title={
             isEditing ? (
@@ -350,7 +379,9 @@ const styles = StyleSheet.create({
   inputCard: { margin: 8, padding: 12 },
   input: { marginBottom: 12 },
   inputActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  addButton: {},
+  addButton: {
+    minWidth: 120,
+  },
   list: { flex: 1, paddingHorizontal: 8 },
   card: { marginBottom: 8 },
   listItem: { paddingVertical: 8, paddingHorizontal: 8 },
@@ -361,7 +392,13 @@ const styles = StyleSheet.create({
   chipText: {},
   chipTextPast: { color: '#b71c1c' },
   checkboxContainer: { marginRight: -4, marginLeft: -8, transform: [{ scale: 0.8 }] },
-  editInput: { height: 40, flex: 1, fontSize: 16, paddingHorizontal: 0, backgroundColor: 'transparent' },
+  editInput: {
+    height: 40,
+    flex: 1,
+    fontSize: 16,
+    paddingHorizontal: 0,
+    backgroundColor: 'transparent',
+  },
   row: { flexDirection: 'row' },
   checklistItem: { paddingVertical: 0, paddingLeft: 32 },
   addChecklistItemContainer: {
@@ -392,10 +429,30 @@ const styles = StyleSheet.create({
   },
   priorityButtons: {
     flex: 1,
-    height: 30, // Adjust height to make them smaller
   },
   divider: {
     marginTop: 12,
     marginBottom: 8,
   },
+  high: {
+    backgroundColor: '#ffcdd2', // 濃いめの赤
+  },
+  medium: {
+    backgroundColor: '#fff9c4', // 中くらいの黄色
+  },
+  low: {
+    backgroundColor: '#e8f5e9', // 薄い緑
+  },
 });
+
+export const PriorityWeight: Record<Priority, ViewStyle> = {
+  [Priority.High]: styles.high,
+  [Priority.Medium]: styles.medium,
+  [Priority.Low]: styles.low, // これもlowにした方がいいのでは？
+};
+
+const PriorityIndentation: Record<Priority, number> = {
+  [Priority.High]: 0,
+  [Priority.Medium]: 10,
+  [Priority.Low]: 20,
+};

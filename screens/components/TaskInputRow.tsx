@@ -27,7 +27,13 @@ interface TaskInputRowProps {
   onRemoveChecklistItem: (taskIndex: number, itemIndex: number) => void;
 }
 
-const TaskInputRow: React.FC<TaskInputRowProps> = (props) => {
+export const PriorityWeight: Record<Priority, number> = {
+  [Priority.High]: styles.high,
+  [Priority.Medium]: styles.medium,
+  [Priority.Low]: styles.medium,
+};
+
+const TaskInputRow: React.FC<TaskInputRowProps> = props => {
   const {
     item,
     index,
@@ -45,7 +51,7 @@ const TaskInputRow: React.FC<TaskInputRowProps> = (props) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <Card style={styles.taskCard}>
+    <Card style={[styles.taskCard, PriorityWeight[item.priority]]}>
       <View style={styles.taskInputRow}>
         <TextInput
           label={`タスク ${index + 1}`}
@@ -150,6 +156,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     width: '100%',
     paddingHorizontal: 8,
+    marginVertical: 10,
   },
   priorityLabel: {
     marginRight: 8,
@@ -158,6 +165,14 @@ const styles = StyleSheet.create({
   },
   priorityButtons: {
     flex: 1,
-    height: 30, // Adjust height to make them smaller
+  },
+  high: {
+    backgroundColor: '#991111',
+  },
+  medium: {
+    backgroundColor: '#119911',
+  },
+  low: {
+    backgroundColor: '#111199',
   },
 });

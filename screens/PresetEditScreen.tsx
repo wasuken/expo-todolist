@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Text } from 'react-native';
 import {
   Appbar,
   List,
@@ -30,104 +30,103 @@ const PRESETS_STORAGE_KEY = '@presets';
 // --- メモ化されたコンポーネント ---
 
 const TaskInputRow = ({
-    item,
-    index,
-    onTaskTextChange,
-    onDueHoursOffsetChange,
-    onPriorityChange, // New prop for priority change
-    onRemove,
-    canRemove,
-    onChecklistItemChange,
-    onAddChecklistItem,
-    onRemoveChecklistItem,
-  }: {
-    item: PresetTask;
-    index: number;
-    onTaskTextChange: (index: number, text: string) => void;
-    onDueHoursOffsetChange: (index: number, value: string) => void;
-    onPriorityChange: (index: number, priority: Priority) => void; // New prop
-    onRemove: (index: number) => void;
-    canRemove: boolean;
-    onChecklistItemChange: (taskIndex: number, itemIndex: number, text: string) => void;
-    onAddChecklistItem: (taskIndex: number) => void;
-    onRemoveChecklistItem: (taskIndex: number, itemIndex: number) => void;
-  }) => {
-    const theme = useTheme();
-    const [expanded, setExpanded] = useState(false);
+  item,
+  index,
+  onTaskTextChange,
+  onDueHoursOffsetChange,
+  onPriorityChange, // New prop for priority change
+  onRemove,
+  canRemove,
+  onChecklistItemChange,
+  onAddChecklistItem,
+  onRemoveChecklistItem,
+}: {
+  item: PresetTask;
+  index: number;
+  onTaskTextChange: (index: number, text: string) => void;
+  onDueHoursOffsetChange: (index: number, value: string) => void;
+  onPriorityChange: (index: number, priority: Priority) => void; // New prop
+  onRemove: (index: number) => void;
+  canRemove: boolean;
+  onChecklistItemChange: (taskIndex: number, itemIndex: number, text: string) => void;
+  onAddChecklistItem: (taskIndex: number) => void;
+  onRemoveChecklistItem: (taskIndex: number, itemIndex: number) => void;
+}) => {
+  const theme = useTheme();
+  const [expanded, setExpanded] = useState(false);
 
-    return (
-      <Card style={styles.taskCard}>
-        <View style={styles.taskInputRow}>
-          <TextInput
-            label={`タスク ${index + 1}`}
-            value={item.text}
-            onChangeText={text => onTaskTextChange(index, text)}
-            mode="outlined"
-            style={styles.taskTextInput}
-            autoComplete="off"
-            autoCorrect={false}
+  return (
+    <Card style={styles.taskCard}>
+      <View style={styles.taskInputRow}>
+        <TextInput
+          label={`タスク ${index + 1}`}
+          value={item.text}
+          onChangeText={text => onTaskTextChange(index, text)}
+          mode="outlined"
+          style={styles.taskTextInput}
+          autoComplete="off"
+          autoCorrect={false}
+        />
+        <TextInput
+          label="期限(時間)"
+          value={item.dueHoursOffset?.toString() || '0'}
+          onChangeText={value => onDueHoursOffsetChange(index, value)}
+          keyboardType="numeric"
+          mode="outlined"
+          style={styles.dueOffsetInput}
+        />
+        {canRemove && (
+          <IconButton
+            icon="close-circle"
+            onPress={() => onRemove(index)}
+            size={20}
+            color={theme.colors.error}
           />
-          <TextInput
-            label="期限(時間)"
-            value={item.dueHoursOffset?.toString() || '0'}
-            onChangeText={value => onDueHoursOffsetChange(index, value)}
-            keyboardType="numeric"
-            mode="outlined"
-            style={styles.dueOffsetInput}
-          />
-          {canRemove && (
-            <IconButton
-              icon="close-circle"
-              onPress={() => onRemove(index)}
-              size={20}
-              color={theme.colors.error}
+        )}
+      </View>
+      <View style={styles.prioritySelectionContainer}>
+        <Text style={styles.priorityLabel}>優先度:</Text>
+        <SegmentedButtons
+          value={item.priority || Priority.Medium}
+          onValueChange={value => onPriorityChange(index, value as Priority)}
+          buttons={[
+            { value: Priority.High, label: Priority.High, style: { flex: 1 } },
+            { value: Priority.Medium, label: Priority.Medium, style: { flex: 1 } },
+            { value: Priority.Low, label: Priority.Low, style: { flex: 1 } },
+          ]}
+          style={styles.priorityButtons}
+        />
+      </View>
+      <List.Accordion
+        title="チェックリスト"
+        left={props => <List.Icon {...props} icon="format-list-checks" />}
+        expanded={expanded}
+        onPress={() => setExpanded(!expanded)}
+      >
+        <View style={styles.checklistContainer}>
+          {(item.checklist || []).map((checklistItem, itemIndex) => (
+            <ChecklistItemInput
+              key={itemIndex}
+              value={checklistItem}
+              taskIndex={index}
+              itemIndex={itemIndex}
+              onChecklistItemChange={onChecklistItemChange}
+              onRemove={onRemoveChecklistItem}
             />
-          )}
+          ))}
+          <Button
+            icon="plus"
+            mode="text"
+            onPress={() => onAddChecklistItem(index)}
+            style={styles.addChecklistItemButton}
+          >
+            項目を追加
+          </Button>
         </View>
-        <View style={styles.prioritySelectionContainer}>
-          <Text style={styles.priorityLabel}>優先度:</Text>
-          <SegmentedButtons
-            value={item.priority || Priority.Medium}
-            onValueChange={value => onPriorityChange(index, value as Priority)}
-            buttons={[
-              { value: Priority.High, label: Priority.High, style: { flex: 1 } },
-              { value: Priority.Medium, label: Priority.Medium, style: { flex: 1 } },
-              { value: Priority.Low, label: Priority.Low, style: { flex: 1 } },
-            ]}
-            style={styles.priorityButtons}
-          />
-        </View>
-        <List.Accordion
-          title="チェックリスト"
-          left={props => <List.Icon {...props} icon="format-list-checks" />}
-          expanded={expanded}
-          onPress={() => setExpanded(!expanded)}
-        >
-          <View style={styles.checklistContainer}>
-            {(item.checklist || []).map((checklistItem, itemIndex) => (
-              <ChecklistItemInput
-                key={itemIndex}
-                value={checklistItem}
-                taskIndex={index}
-                itemIndex={itemIndex}
-                onChecklistItemChange={onChecklistItemChange}
-                onRemove={onRemoveChecklistItem}
-              />
-            ))}
-            <Button
-              icon="plus"
-              mode="text"
-              onPress={() => onAddChecklistItem(index)}
-              style={styles.addChecklistItemButton}
-            >
-              項目を追加
-            </Button>
-          </View>
-        </List.Accordion>
-      </Card>
-    );
-  };
-
+      </List.Accordion>
+    </Card>
+  );
+};
 
 // --- メインコンポーネント ---
 export default function PresetEditScreen() {
@@ -138,7 +137,15 @@ export default function PresetEditScreen() {
 
   const [preset, setPreset] = useState<Partial<Preset>>({
     name: '',
-    tasks: [{ id: Math.random().toString(), text: '', dueHoursOffset: 24, checklist: [], priority: Priority.Medium }], // Default priority
+    tasks: [
+      {
+        id: Math.random().toString(),
+        text: '',
+        dueHoursOffset: 24,
+        checklist: [],
+        priority: Priority.Medium,
+      },
+    ], // Default priority
   });
   const [isNew, setIsNew] = useState(true);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -173,7 +180,7 @@ export default function PresetEditScreen() {
     try {
       const storedPresets = await AsyncStorage.getItem(PRESETS_STORAGE_KEY);
       let presets: Preset[] = storedPresets ? JSON.parse(storedPresets) : [];
-      
+
       const tasks = (preset.tasks || [])
         .filter(t => t.text.trim() !== '')
         .map(t => ({
@@ -228,7 +235,13 @@ export default function PresetEditScreen() {
       ...p,
       tasks: [
         ...(p.tasks || []),
-        { id: Math.random().toString(), text: '', dueHoursOffset: 24, checklist: [], priority: Priority.Medium },
+        {
+          id: Math.random().toString(),
+          text: '',
+          dueHoursOffset: 24,
+          checklist: [],
+          priority: Priority.Medium,
+        },
       ],
     }));
     scrollToEnd();
@@ -264,9 +277,7 @@ export default function PresetEditScreen() {
   const handleRemoveChecklistItem = useCallback((taskIndex: number, itemIndex: number) => {
     setPreset(p => {
       const newTasks = [...(p.tasks || [])];
-      const newChecklist = (newTasks[taskIndex].checklist || []).filter(
-        (_, i) => i !== itemIndex
-      );
+      const newChecklist = (newTasks[taskIndex].checklist || []).filter((_, i) => i !== itemIndex);
       newTasks[taskIndex] = { ...newTasks[taskIndex], checklist: newChecklist };
       return { ...p, tasks: newTasks };
     });
@@ -287,7 +298,7 @@ export default function PresetEditScreen() {
         style={styles.container}
         keyboardVerticalOffset={80}
       >
-        <ScrollView 
+        <ScrollView
           ref={scrollViewRef}
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContentContainer}
@@ -307,7 +318,13 @@ export default function PresetEditScreen() {
                 item={task}
                 index={index}
                 onTaskTextChange={text => handleTaskChange(index, 'text', text)}
-                onDueHoursOffsetChange={value => handleTaskChange(index, 'dueHoursOffset', isNaN(Number(value)) ? undefined : Number(value))}
+                onDueHoursOffsetChange={value =>
+                  handleTaskChange(
+                    index,
+                    'dueHoursOffset',
+                    isNaN(Number(value)) ? undefined : Number(value)
+                  )
+                }
                 onPriorityChange={priority => handleTaskChange(index, 'priority', priority)}
                 onRemove={handleRemoveTaskInput}
                 canRemove={(preset.tasks?.length || 0) > 1}
@@ -396,6 +413,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     width: '100%',
     paddingHorizontal: 8,
+    marginVertical: 10,
   },
   priorityLabel: {
     marginRight: 8,
@@ -404,6 +422,5 @@ const styles = StyleSheet.create({
   },
   priorityButtons: {
     flex: 1,
-    height: 30, // Adjust height to make them smaller
   },
 });
