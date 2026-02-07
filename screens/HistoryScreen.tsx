@@ -25,7 +25,7 @@ export default function HistoryScreen() {
   const completedTasksByDate = useMemo(() => {
     const groups: { [key: string]: typeof todos } = {};
     todos.forEach(todo => {
-      if (todo.completed && todo.completedAt) {
+      if (todo.status === 'done' && todo.completedAt) {
         const dateStr = toYYYYMMDD(new Date(todo.completedAt));
         if (!groups[dateStr]) {
           groups[dateStr] = [];

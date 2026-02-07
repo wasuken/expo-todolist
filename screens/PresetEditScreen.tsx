@@ -69,8 +69,11 @@ const TaskInputRow = ({
         />
         <TextInput
           label="期限(時間)"
-          value={item.dueHoursOffset?.toString() || '0'}
-          onChangeText={value => onDueHoursOffsetChange(index, value)}
+          value={item.dueHoursOffset?.toString() || ''}
+          onChangeText={value => {
+            const filteredValue = value.replace(/[^0-9]/g, '');
+            onDueHoursOffsetChange(index, filteredValue);
+          }}
           keyboardType="numeric"
           mode="outlined"
           style={styles.dueOffsetInput}
@@ -317,15 +320,15 @@ export default function PresetEditScreen() {
                 key={task.id}
                 item={task}
                 index={index}
-                onTaskTextChange={text => handleTaskChange(index, 'text', text)}
-                onDueHoursOffsetChange={value =>
-                  handleTaskChange(
-                    index,
-                    'dueHoursOffset',
-                    isNaN(Number(value)) ? undefined : Number(value)
-                  )
-                }
-                onPriorityChange={priority => handleTaskChange(index, 'priority', priority)}
+                onTaskTextChange={(_, text) => handleTaskChange(index, 'text', text)}
+                onDueHoursOffsetChange={(_, value) => {
+                  // 数字以外を除去
+                  const filteredValue = value.replace(/[^0-9]/g, '');
+                  // 空文字列なら undefined、それ以外は数値
+                  const numValue = filteredValue === '' ? undefined : Number(filteredValue);
+                  handleTaskChange(index, 'dueHoursOffset', numValue);
+                }}
+                onPriorityChange={(_, priority) => handleTaskChange(index, 'priority', priority)}
                 onRemove={handleRemoveTaskInput}
                 canRemove={(preset.tasks?.length || 0) > 1}
                 onChecklistItemChange={handleChecklistItemChange}
