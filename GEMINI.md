@@ -221,3 +221,7 @@ interface CompletionHistory {
     - カレンダーのテーマカラーは theme.colors.primary に統一済み
     - 日付フォーマットは YYYY-MM-DD 形式（toISOString().split('T')[0]）を使用
     - 完了タスクは completedAt フィールドで管理、未完了タスクには completedAt がない
+
+# 次実装する機能
+
+優先度機能実装。

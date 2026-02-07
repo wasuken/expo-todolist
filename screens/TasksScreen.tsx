@@ -12,13 +12,14 @@ import {
   Text,
   Chip,
   Divider,
+  SegmentedButtons,
 } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { format, formatDistanceToNowStrict } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
-import { useTodos, Todo, ChecklistItem as ChecklistItemType } from '../contexts/TodoContext';
+import { useTodos, Todo, ChecklistItem as ChecklistItemType, Priority } from '../contexts/TodoContext';
 
 const DueDateChip = ({
   date,
@@ -90,6 +91,8 @@ export default function TasksScreen() {
   const [editingText, setEditingText] = useState('');
   const [editingDueDate, setEditingDueDate] = useState<Date | undefined>(undefined);
   const [newChecklistItemText, setNewChecklistItemText] = useState('');
+  const [newTodoPriority, setNewTodoPriority] = useState<Priority>(Priority.Medium); // New state for new todo priority
+  const [editingPriority, setEditingPriority] = useState<Priority | undefined>(undefined); // New state for editing todo priority
 
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
   const [isEditingDatePickerVisible, setEditingDatePickerVisibility] = useState(false);
@@ -113,9 +116,10 @@ export default function TasksScreen() {
   };
 
   const handleAddTodo = () => {
-    addTodo(newTodoText, newTodoDueDate);
+    addTodo(newTodoText, newTodoDueDate, undefined, newTodoPriority); // Pass priority
     setNewTodoText('');
     setNewTodoDueDate(undefined);
+    setNewTodoPriority(Priority.Medium); // Reset to default
     Keyboard.dismiss();
   };
 
@@ -123,6 +127,7 @@ export default function TasksScreen() {
     setEditingTodoId(todo.id);
     setEditingText(todo.text);
     setEditingDueDate(todo.dueDate);
+    setEditingPriority(todo.priority || Priority.Medium); // Set editing priority, default to Medium
   };
 
   const handleAddChecklistItem = () => {
@@ -136,10 +141,10 @@ export default function TasksScreen() {
     if (!editingTodoId) return;
     // 最後に残っているかもしれないチェックリスト項目を追加
     if (newChecklistItemText.trim() !== '') {
-      updateTodo(editingTodoId, editingText, editingDueDate, newChecklistItemText);
+      updateTodo(editingTodoId, editingText, editingDueDate, newChecklistItemText, editingPriority);
     } else {
-      // チェックリスト項目がなければ、テキストと日付のみ更新
-      updateTodo(editingTodoId, editingText, editingDueDate);
+      // チェックリスト項目がなければ、テキストと日付と優先度のみ更新
+      updateTodo(editingTodoId, editingText, editingDueDate, undefined, editingPriority);
     }
     
     // 編集モードを終了
@@ -147,6 +152,7 @@ export default function TasksScreen() {
     setEditingText('');
     setEditingDueDate(undefined);
     setNewChecklistItemText('');
+    setEditingPriority(undefined);
   };
 
   const cancelEditing = () => {
@@ -154,6 +160,7 @@ export default function TasksScreen() {
     setEditingText('');
     setEditingDueDate(undefined);
     setNewChecklistItemText('');
+    setEditingPriority(undefined);
   };
 
   const renderTodo = ({ item }: { item: Todo }) => {
@@ -196,6 +203,21 @@ export default function TasksScreen() {
                 <Button icon="calendar" onPress={showEditingDatePicker} compact mode="text">
                   期限を設定
                 </Button>
+              )}
+              {isEditing && (
+                <View style={styles.prioritySelectionContainer}>
+                  <Text style={styles.priorityLabel}>優先度:</Text>
+                  <SegmentedButtons
+                    value={editingPriority || Priority.Medium}
+                    onValueChange={value => setEditingPriority(value as Priority)}
+                    buttons={[
+                      { value: Priority.High, label: Priority.High, style: { flex: 1 } },
+                      { value: Priority.Medium, label: Priority.Medium, style: { flex: 1 } },
+                      { value: Priority.Low, label: Priority.Low, style: { flex: 1 } },
+                    ]}
+                    style={styles.priorityButtons}
+                  />
+                </View>
               )}
             </>
           )}
@@ -280,6 +302,20 @@ export default function TasksScreen() {
               追加
             </Button>
           </View>
+          <Divider style={styles.divider} />
+          <View style={styles.prioritySelectionContainer}>
+            <Text style={styles.priorityLabel}>優先度:</Text>
+            <SegmentedButtons
+              value={newTodoPriority}
+              onValueChange={value => setNewTodoPriority(value as Priority)}
+              buttons={[
+                { value: Priority.High, label: Priority.High, style: { flex: 1 } },
+                { value: Priority.Medium, label: Priority.Medium, style: { flex: 1 } },
+                { value: Priority.Low, label: Priority.Low, style: { flex: 1 } },
+              ]}
+              style={styles.priorityButtons}
+            />
+          </View>
         </Card>
 
         <DateTimePickerModal
@@ -336,5 +372,30 @@ const styles = StyleSheet.create({
   },
   addChecklistItemInput: {
     flex: 1,
+  },
+  titlePriorityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    flexShrink: 1,
+  },
+  prioritySelectionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    width: '100%',
+  },
+  priorityLabel: {
+    marginRight: 8,
+    fontSize: 14,
+    color: 'gray',
+  },
+  priorityButtons: {
+    flex: 1,
+    height: 30, // Adjust height to make them smaller
+  },
+  divider: {
+    marginTop: 12,
+    marginBottom: 8,
   },
 });

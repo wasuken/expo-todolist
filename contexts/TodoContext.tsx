@@ -8,6 +8,13 @@ export interface ChecklistItem {
   completed: boolean;
 }
 
+// Add this enum
+export enum Priority {
+  High = '高',
+  Medium = '中',
+  Low = '低',
+}
+
 // Data structure for a single todo item
 export interface Todo {
   id: string;
@@ -17,14 +24,15 @@ export interface Todo {
   completedAt?: Date;
   dueDate?: Date;
   checklist?: ChecklistItem[];
+  priority?: Priority; // New field
 }
 
 interface TodoContextData {
   todos: Todo[];
-  addTodo: (text: string, dueDate?: Date, checklist?: string[]) => void;
+  addTodo: (text: string, dueDate?: Date, checklist?: string[], priority?: Priority) => void;
   toggleTodo: (id: string) => void;
   deleteTodo: (id: string) => void;
-  updateTodo: (id: string, newText: string, newDueDate?: Date, newChecklistItem?: string) => void;
+  updateTodo: (id: string, newText?: string, newDueDate?: Date, newChecklistItem?: string, newPriority?: Priority) => void;
   toggleChecklistItem: (todoId: string, checklistItemId: string) => void;
 }
 
@@ -43,7 +51,16 @@ const sortTodos = (todos: Todo[]): Todo[] => {
     if (a.completed && !b.completed) return 1; // aが完了、bが未完了 => aはbより後
     if (!a.completed && b.completed) return -1; // aが未完了、bが完了 => aはbより前
 
-    // 2. 同じ完了ステータスの場合は、createdAtの降順 (新しいものが上)
+    // 2. priority: High > Medium > Low の順
+    const priorityOrder = { [Priority.High]: 3, [Priority.Medium]: 2, [Priority.Low]: 1 };
+    const aPriority = a.priority ? priorityOrder[a.priority] : 0;
+    const bPriority = b.priority ? priorityOrder[b.priority] : 0;
+
+    if (aPriority !== bPriority) {
+      return bPriority - aPriority; // 優先度でソート
+    }
+
+    // 3. 同じ完了ステータス、同じ優先度の場合は、createdAtの降順 (新しいものが上)
     return b.createdAt.getTime() - a.createdAt.getTime();
   });
 };
@@ -62,7 +79,8 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             createdAt: new Date(t.createdAt),
             completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
             dueDate: t.dueDate ? new Date(t.dueDate) : undefined,
-            checklist: t.checklist || [], // 古いデータのためにフォールバック
+            checklist: t.checklist || [],
+            priority: t.priority || Priority.Medium, // Default to Medium if not set
           }));
         }
       } catch (error) {
@@ -117,7 +135,7 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, []);
 
-  const addTodo = (text: string, dueDate?: Date, checklist?: string[]) => {
+  const addTodo = (text: string, dueDate?: Date, checklist?: string[], priority: Priority = Priority.Medium) => {
     if (text.trim() === '') return;
     todoCounter += 1;
     const newTodo: Todo = {
@@ -135,6 +153,7 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               completed: false,
             } as ChecklistItem)
         ) || [],
+      priority, // Add priority here
     };
     setTodos(prevTodos => sortTodos([newTodo, ...prevTodos])); // ここでソートを適用
   };
@@ -192,14 +211,24 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const updateTodo = (
     id: string,
-    newText: string,
+    newText?: string,
     newDueDate?: Date,
-    newChecklistItem?: string
+    newChecklistItem?: string,
+    newPriority?: Priority
   ) => {
     setTodos(prevTodos => {
       const updatedTodos = prevTodos.map(todo => {
         if (todo.id === id) {
-          const updatedTodo = { ...todo, text: newText, dueDate: newDueDate };
+          const updatedTodo = { ...todo };
+          if (newText !== undefined) {
+            updatedTodo.text = newText;
+          }
+          if (newDueDate !== undefined) {
+            updatedTodo.dueDate = newDueDate;
+          }
+          if (newPriority !== undefined) {
+            updatedTodo.priority = newPriority;
+          }
           if (newChecklistItem && newChecklistItem.trim() !== '') {
             const newItem: ChecklistItem = {
               id: `${Date.now()}-cl-${Math.random()}`,
